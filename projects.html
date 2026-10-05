@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>projects · matthew hamilton</title>
+  <meta name="description" content="things matthew hamilton has built">
+  <link rel="stylesheet" href="site.css">
+  <style>
+    h1 a { text-decoration: none; }
+
+    /* grid cards ported from portfolio-html: media first, no card chrome, copy flush underneath */
+    .grid-view { display: grid; grid-template-columns: repeat(2, 1fr); gap: 32px 24px; align-items: start; }
+    .grid-card { display: flex; flex-direction: column; gap: 12px; }
+    .grid-thumb {
+      position: relative; aspect-ratio: 16 / 9; overflow: hidden;
+      background: var(--line); border-radius: 4px;
+    }
+    .grid-thumb img, .grid-thumb video {
+      position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+    }
+    .grid-thumb video { opacity: 0; }
+    .grid-thumb.active video { opacity: 1; }
+    .grid-details { display: flex; flex-direction: column; gap: 6px; }
+    .title-line { display: flex; align-items: center; gap: 8px; }
+    .grid-card h3 { font-weight: 400; font-size: 16px; line-height: 1.15; }
+    .badge { width: 18px; height: 18px; object-fit: contain; display: block; filter: grayscale(1); opacity: .6; transition: filter .3s, opacity .3s; }
+    .badge:hover, .grid-card:hover .badge { filter: none; opacity: 1; }
+    .title-links { margin-left: auto; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .proj-link {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 2px; color: var(--dim);
+    }
+    .proj-link:hover { color: var(--ink); background: var(--line); }
+    .proj-link.try { color: var(--ink); }
+    .proj-link svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .desc { font-size: 12px; line-height: 1.55; color: var(--dim); }
+
+    @media (max-width: 520px) { .grid-view { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body data-jumps="top,shield,baam">
+  <main>
+    <header id="top">
+      <h1><a href="index.html">matthew hamilton</a></h1>
+      <nav>
+        <a href="index.html">home</a>
+        <a href="mailto:matthewhamilton3141@gmail.com">email</a>
+        <a href="https://github.com/matthewhamilton3141">github</a>
+        <a href="https://x.com/mhamilton3141">x</a>
+        <a href="#">linkedin</a>
+        <button id="theme" type="button" aria-label="switch to light mode">[淺]</button>
+      </nav>
+    </header>
+
+    <h2>projects</h2>
+    <div class="grid-view" id="list"></div>
+  </main>
+
+  <script src="site.js"></script>
+  <script>
+    const R2 = 'https://pub-642075d77d2b430c93bf3b1c60299af0.r2.dev/';
+    // project data lifted from portfolio-html/script.js, same order
+    const PROJECTS = [
+      { id: 'isle', kind: 'working on', title: 'isle',
+        desc: "turning the dead space around the macbook camera into a live island: what's playing and what your agent is doing.",
+        github: 'https://github.com/matthewhamilton3141/isle', live: 'https://islenotch.vercel.app/',
+        thumb: 'images/isle.webp', video: R2 + 'isle-portfolio.mp4' },
+      { id: 'lasertagnow', kind: 'hackathon project', title: 'laser tag now',
+        desc: 'ar laser tag on your phone. real-world matches with radar, health, and live fire over the camera feed.',
+        github: 'https://github.com/ConnorXTan/phonegame', thumb: 'images/lasertagnow.webp',
+        video: R2 + 'lasertagnow.mp4', badge: 'images/summerhacks.svg', badgeLink: 'https://summerhacks.ca',
+        fit: 'contain', mediaBg: '#000' },
+      { id: 'pixeltocharacter', kind: 'personal project', title: 'pixel-to-character',
+        desc: 'turns any image into character art with real shading. tune the grid, characters, font, and tone, then export.',
+        github: 'https://github.com/matthewhamilton3141/pixel-to-character/', live: 'https://pixel-to-character.vercel.app/',
+        thumb: 'images/pixel-to-character.jpg' },
+      { id: 'shield', kind: 'working on', title: 'shield-in-alpasim',
+        desc: "wraps a hard safety shield as a driver plugin for nvidia alpasim. cuts at-fault collisions ~3x and eliminates outright failures on a learned camera policy, at no progress cost.",
+        github: 'https://github.com/matthewhamilton3141/shield-in-alpasim', thumb: 'images/shield-in-alpasim.webp',
+        video: R2 + 'montage_drives_labels_nogap.mp4' },
+      { id: 'gsplat', kind: 'working on', title: 'gsplat-rt',
+        desc: 'real-time gaussian-splatting slam (cuda/tensorrt). a self-planning car drives 312 m through a reconstructed interchange with 0 collisions.',
+        github: 'https://github.com/matthewhamilton3141/gsplat-rt', thumb: 'images/reconstruction_desk.webp',
+        video: R2 + 'reconstruction_turntable.mp4', zoom: 1.2 },
+      { id: 'baam', kind: 'hackathon project', title: 'baam',
+        desc: 'social betting for your circle. solana contracts with imessage, discord, and web clients.',
+        github: 'https://github.com/BansonVuong/BAAM', thumb: 'images/baampreview1.webp',
+        video: R2 + 'baamimsg.mp4', webm: R2 + 'baamimsg.webm', startTime: 2.23,
+        badge: 'images/jamhackslogo.png', badgeLink: 'https://jamhacks.ca' },
+      { id: 'retermina', kind: 'personal project', title: 'retermina',
+        desc: 'ai-coding terminal on tauri v2 + rust. native ptys, split panes, and out-of-process shells that survive quit, crash, or update.',
+        github: 'https://github.com/matthewhamilton3141/Retermina', live: 'https://retermina.com/',
+        thumb: 'images/reterminapreview.webp', zoom: 1.35 },
+      { id: 'stash', kind: 'personal project', title: 'stash',
+        desc: 'menu-bar macos app to stash code snippets. capture with ⌘⇧K, find and copy in a keystroke. tauri 2 + react.',
+        github: 'https://github.com/matthewhamilton3141/stash', live: 'https://stashnotes.vercel.app',
+        thumb: 'images/codenote.webp' }
+    ];
+
+    const icGithub = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>';
+    const icLink = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+    const ext = 'target="_blank" rel="noopener noreferrer"';
+
+    const crop = (el, p) => {
+      if (p.fit) el.style.objectFit = p.fit;
+      if (p.objectPosition) el.style.objectPosition = p.objectPosition;
+      if (p.zoom) el.style.transform = `scale(${p.zoom})`;
+    };
+
+    // hover (or tap) the thumbnail to play the preview; the video is only fetched on first hover
+    const livePhoto = (target, thumb, p) => {
+      if (!p.video) return;
+      let video = null;
+      const on = () => {
+        if (!video) {
+          video = document.createElement('video');
+          Object.assign(video, { loop: true, muted: true, playsInline: true, preload: 'auto' });
+          crop(video, p);
+          if (p.webm) video.insertAdjacentHTML('beforeend', `<source src="${p.webm}" type="video/webm">`);
+          video.insertAdjacentHTML('beforeend', `<source src="${p.video}" type="video/mp4">`);
+          if (p.startTime) video.addEventListener('loadedmetadata', () => { video.currentTime = p.startTime; }, { once: true });
+          thumb.appendChild(video);
+        }
+        thumb.classList.add('active');
+        video.play().catch(() => {});
+      };
+      const off = () => {
+        thumb.classList.remove('active');
+        if (video) { video.pause(); video.currentTime = p.startTime || 0; }
+      };
+      target.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') on(); });
+      target.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') off(); });
+      thumb.addEventListener('pointerup', e => {
+        if (e.pointerType !== 'mouse') thumb.classList.contains('active') ? off() : on();
+      });
+    };
+
+    const list = document.getElementById('list');
+    for (const p of PROJECTS) {
+      const card = document.createElement('article');
+      card.className = 'grid-card';
+      card.id = p.id;
+      const badge = p.badge
+        ? `<a href="${p.badgeLink}" ${ext} title="view hackathon"><img class="badge" src="${p.badge}" alt="hackathon logo"></a>` : '';
+      card.innerHTML = `
+        <div class="grid-thumb"${p.mediaBg ? ` style="background:${p.mediaBg}"` : ''}>
+          <img src="${p.thumb}" alt="${p.title}" loading="lazy" decoding="async">
+        </div>
+        <div class="grid-details">
+          <div class="title-line">
+            <h3>${p.title}</h3>${badge}
+            <div class="title-links">
+              ${p.github ? `<a class="proj-link" href="${p.github}" ${ext} title="github" aria-label="github">${icGithub}</a>` : ''}
+              ${p.live ? `<a class="proj-link try" href="${p.live}" ${ext} title="open live site" aria-label="open live site">${icLink}</a>` : ''}
+            </div>
+          </div>
+          <p class="desc">${p.desc}</p>
+        </div>`;
+      const thumb = card.querySelector('.grid-thumb');
+      crop(thumb.querySelector('img'), p);
+      livePhoto(thumb, thumb, p);
+      list.appendChild(card);
+    }
+  </script>
+</body>
+</html>

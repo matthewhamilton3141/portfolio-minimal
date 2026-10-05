@@ -1,0 +1,119 @@
+/* shared by index.html and projects.html */
+:root {
+  --bg: #fff;
+  --ink: #111;
+  --dim: #777;
+  --line: #e5e5e5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0d0d0d; --ink: #eee; --dim: #888; --line: #222; }
+}
+:root[data-theme="dark"] { --bg: #0d0d0d; --ink: #eee; --dim: #888; --line: #222; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; scrollbar-width: none; }
+html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+  padding: 16px 16px 96px;
+}
+main { max-width: 560px; margin: 0 auto; }
+a { color: inherit; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--ink); }
+
+header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 40px; position: sticky; top: 0; z-index: 50; background: var(--bg); padding: 16px 0; margin-top: -16px; }
+nav { display: flex; align-items: center; gap: 16px; }
+nav a { color: var(--dim); text-decoration: none; }
+nav a:hover { color: var(--ink); }
+
+h1 { font-size: 15px; font-weight: 500; }
+
+/* highlighted words: inverted block, with an optional logo after the word */
+.hl { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); padding: 0 .3em; }
+.hl .ico { display: inline-block; width: 1em; height: 1em; vertical-align: -.14em; margin-right: .25em; object-fit: contain; }
+.dim { color: var(--dim); }
+
+button {
+  display: grid; place-items: center; width: 24px; height: 24px;
+  color: var(--dim); background: none; border: 0; cursor: pointer;
+}
+button:hover { color: var(--ink); }
+/* theme toggle: the word for the mode it switches to, in brackets */
+#theme {
+  height: 28px; padding: 0 2px; font: 14px/1 'PingFang SC', 'Noto Sans SC', sans-serif;
+  color: var(--ink); border-radius: 0;
+}
+#theme:hover, #theme:focus-visible { background: var(--ink); color: var(--bg); }
+
+section { margin-top: 32px; }
+/* the rule separates the timelines (done, now, github), not the items inside them */
+section + section, #done { border-top: 1px solid var(--line); padding-top: 16px; }
+h2 { font-size: 15px; font-weight: 400; color: var(--dim); margin-bottom: 16px; }
+
+.row {
+  display: grid; grid-template-columns: 1fr auto; gap: 4px 16px;
+  padding: 12px 0;
+}
+.row p { grid-column: 1 / -1; color: var(--dim); }
+/* a highlight that is the row's only child would stretch to the full 1fr column; keep it hugging the text */
+.row > .hl { justify-self: start; }
+
+/* 陳文飛 — the name is the place. Each character fills in turn as you scroll.
+   ported from portfolio-html; font is a 3-glyph subset of Noto Serif SC (OFL) */
+@font-face {
+  font-family: 'Noto Serif SC'; font-weight: 700; font-display: swap;
+  src: url(data:font/woff2;base64,d09GMgABAAAAAAXsABAAAAAACbQAAAWQAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGx4cQAZgP1NUQVQqAEwRCAqIaIcPCwwAATYCJAMQBCAFhBgHIBckGAwbvAfIxOBpWz9vF1B3CRML72NhVSLeNUbWZRlcRhMX+aOK/7kcX1NPoIWJhnpj/baNNejuqDZ5wGMOSyywXuTWMHZ5kTwQAAwkbABJTM4shCE4IHa93iEr2GgMPPiqe2l3Sx1klS3ltZBVKRuqIatVNighq1O2NUDWvKzrYA79gToPLkAtooqRMcPTITPgTwLDFEVBZ6QwMdv9XaSxwImTc1JyclIghVT1im7SLwACziCZNItHDIpDFEW9qF/KAwGB4QLB3BFIQHVWVrWRCKhMCsScOt8/Ng7QjUx0YxcHoVsbbQgKFKTl88dbVa8WTUci/Ye1vdUrKt0wpZcSEL0eogC4WZbh2I+EjBIgrxsAxwFu0JcFy6FpmuazrAjoc4xYhuMiEAg+1s5OYMLy+QKB3MCEV1MpLC836BJVVPAqezWaK0P7r7tv1F51V6rV6veFYt0nrxSK4T0XLjiPMsY2olkajUYjNz/+2FOr1WqLagWK4T1nLliMMkK5AHwIwFewUKsLxTrdTPnoqBNvaPdxhukhcoY3tBu8tZcFo2AK5KOM6vLly64PNBoMqQuHt4rHd4rJ4sXsYstdZFgbv06n09XXGbbdnBrafpxhKgjpnYgdWarRaNLMt1+WXNRqi3pFEBaLIGyte73TBo3mSdDYhOXEIVuLwj0bzFXHb8q0Wm1xiURjuG7Tkgr56HbZabU6UXxOpytcsBND6uUXPdLpdGSqIOVsqL2lubBBdVy29uJF2eTF0XdXH8oU8tFR2ejp007idceOTaX7HTpU2vml9MvlkihV3/QrUSp/t2tT+yA6/Yr/XxqsWnOyDad6LQj+Vfws1z7+fMXOj63n1H84eZQZOuWYfieRd38Zz2LtgXLMadouirFq61X/xrOfM//G+UUfT+m39rjxGb9ddrVFtb36Y5sxlF65GpWHPEnu99FWaRVvl0mWtSyTLJtsMWAc2Hxvz9LgJaVRK45nda8SGn3vn8s72m8hll6b5dPlzY/h5A5IzKhfSp9Knq6y5U/Ul+13OOXe2Cs2jSmwU7imReflEqvSKam1Hwv5DobCtgivQEmjX41JhihfkGGjMuJWZQeEX3WmvltoYra+2gsNngrJ9FDupiWWoii5ddyUqfVh9lZ/nlX9kTEzeMC4ENzZdJEkK145arc4ei0jq8pcdM3FNNcxZW7vttXBg2zFFm6N/Ojgtj1hPdnSaR0e6zhOTEhV9rpjIhOlkyI89uK2LSHD/3Wt4LYrti/betuzL99x+nzXY6kHZ6cpdpamVPp1uT2c8ldJSl5GUvUqgdF3DntiLIZDe6uqCp0W1sXVStvZrojnxSsFRq+pF9wrGyzEEf8czbQomfe/beWOvi9qOWtjcq3Gd+s9uncddh+o7mqKkv1KXqy9yy5s8aeMj5YmB6npW8eOGy5YMZANADgNAoDCjQs788pniiJ/M6TpLwHg41ubzwPAx1+2vPtX8M/XbIOBEAQ8UAAAAnAG//8YYE//K/gvgW0AAaBjQ4wuw98A/SWkSMekyhyXqkHMD1kROxkM/DE2jhH2FJP4SE1gQ1zVFAyJVE0jEp+qOXDCZTUXM1AS5UGKIVRCBIMfIAR8TCAwH26UAuWoRiWq0Gbx29CEVoTDh7GNOFGOBlQwcQPaUIdqlGYWt6Ic3mhECyqRjUa0KfwClKMF1ahgoxPghXg0og5lKCpiWzlsgNOk8Ic3fOGLAHghFX6IQFVnKK1iOzjEj7AKI1APJWoxhhIVKEcXIrpD8BDUxK1SDqScUlplss6lIAc5SEHEwimvxilSriiF23JKfeGHEHgFDn8EwtI4lKERJcu1uB4twaDT8HlDWQ3e20/Uwwdu2Eg/kLb6E/CH/ntiDPLr/3yAPa0X/RfPNjwslNBfCugm2EOGYAAAAA==) format('woff2');
+  unicode-range: U+6587, U+9673, U+98DB;
+}
+.namefill-dock {
+  position: fixed; right: 40px; top: 50%; transform: translateY(-50%); z-index: 90;
+}
+.namefill {
+  display: flex; flex-direction: column; gap: 16px;
+  font: 700 44px/1 'Noto Serif SC', serif;
+  touch-action: none; user-select: none; cursor: default;
+}
+.namefill[hidden] { display: none; }
+.namefill-glyph {
+  position: relative; display: block; font-style: normal;
+  color: color-mix(in srgb, var(--ink) 15%, transparent);
+}
+.namefill-glyph b {
+  position: absolute; inset: 0; color: var(--ink); font-weight: inherit;
+  clip-path: inset(0 0 100% 0);
+}
+.namefill:focus { outline: none; }
+.namefill:focus-visible { outline: 1px solid var(--line); outline-offset: 6px; }
+@media (max-width: 767px) { .namefill-dock { display: none; } }
+
+/* github contribution graph: ink tints per level, so it flips with the theme */
+.gh-months, .gh-cells {
+  display: grid; grid-template-columns: repeat(var(--weeks, 26), 1fr); gap: 3px;
+}
+.gh-months { height: 16px; margin-bottom: 4px; }
+.gh-months span { font-size: 11px; line-height: 16px; color: var(--dim); white-space: nowrap; }
+.gh-cell { aspect-ratio: 1; background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.gh-cell.empty { visibility: hidden; }
+.gh-cell[data-level="1"] { background: color-mix(in srgb, var(--ink) 25%, transparent); }
+.gh-cell[data-level="2"] { background: color-mix(in srgb, var(--ink) 45%, transparent); }
+.gh-cell[data-level="3"] { background: color-mix(in srgb, var(--ink) 70%, transparent); }
+.gh-cell[data-level="4"] { background: var(--ink); }
+.gh-total { margin: 12px 0 28px; color: var(--dim); font-size: 13px; }
+
+/* footer sits on the bottom edge of the page, below the content */
+body:has(> footer) { min-height: 100vh; display: flex; flex-direction: column; padding-bottom: 24px; }
+footer {
+  width: 100%; max-width: 560px; margin: auto auto 0; padding-top: 16px; border-top: 1px solid var(--line);
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px;
+  color: var(--dim); font-size: 13px;
+}
+footer a { color: var(--dim); }
+footer a:hover { color: var(--ink); }
+
+/* keyboard focus: a plain outline, shown only for keyboard users */
+:focus-visible { outline: 1px solid var(--ink); outline-offset: 3px; }
+
+/* the poro strip sits inside the content column, between the last section and the footer */
+.poro { position: relative; z-index: 2; width: 100%; height: 65px; margin: 58px 0 0; cursor: default; user-select: none; overflow: hidden; }
