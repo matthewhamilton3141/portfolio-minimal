@@ -19,7 +19,7 @@ body {
   font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
   padding: 16px 16px 96px;
 }
-main { max-width: 560px; margin: 0 auto; }
+main { width: min(560px, 100%); margin: 0 auto; }
 a { color: inherit; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
 a:hover { text-decoration-color: var(--ink); }
 
@@ -73,9 +73,13 @@ h2 { font-size: 15px; font-weight: 400; color: var(--dim); margin-bottom: 16px; 
 .namefill {
   display: flex; flex-direction: column; gap: 16px;
   font: 700 44px/1 'Noto Serif SC', serif;
-  touch-action: none; user-select: none; cursor: default;
+  touch-action: none; user-select: none; cursor: grab; position: relative;
 }
+.namefill.grabbing, .namefill.grabbing * { cursor: grabbing; }
 .namefill[hidden] { display: none; }
+.namefill-glyph { transition: transform .2s; }
+.namefill-glyph:hover { transform: translateX(-3px); }
+.namefill.grabbing .namefill-glyph:hover { transform: none; }
 .namefill-glyph {
   position: relative; display: block; font-style: normal;
   color: color-mix(in srgb, var(--ink) 15%, transparent);
@@ -90,17 +94,58 @@ h2 { font-size: 15px; font-weight: 400; color: var(--dim); margin-bottom: 16px; 
 
 /* github contribution graph: ink tints per level, so it flips with the theme */
 .gh-months, .gh-cells {
-  display: grid; grid-template-columns: repeat(var(--weeks, 26), 1fr); gap: 3px;
+  display: grid; grid-template-columns: repeat(var(--weeks, 26), 1fr); gap: 2px;
 }
 .gh-months { height: 16px; margin-bottom: 4px; }
 .gh-months span { font-size: 11px; line-height: 16px; color: var(--dim); white-space: nowrap; }
-.gh-cell { aspect-ratio: 1; background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.gh-cell { aspect-ratio: 1; background: var(--line); }
 .gh-cell.empty { visibility: hidden; }
 .gh-cell[data-level="1"] { background: color-mix(in srgb, var(--ink) 25%, transparent); }
 .gh-cell[data-level="2"] { background: color-mix(in srgb, var(--ink) 45%, transparent); }
 .gh-cell[data-level="3"] { background: color-mix(in srgb, var(--ink) 70%, transparent); }
 .gh-cell[data-level="4"] { background: var(--ink); }
-.gh-total { margin: 12px 0 28px; color: var(--dim); font-size: 13px; }
+.gh-graph { position: relative; }
+.gh-tip {
+  position: absolute; z-index: 1; pointer-events: none; white-space: nowrap;
+  transform: translate(-50%, calc(-100% - 8px));
+  background: var(--ink); color: var(--bg); font-size: 12px; line-height: 1; padding: 6px 8px;
+}
+.gh-tip[hidden] { display: none; }
+.gh-total { margin: 0 0 16px; color: var(--dim); }
+
+/* music: the track info, a playback bar and text controls, in the page's bracket style */
+.player[hidden] { display: none; }
+.player { margin-top: 4px; }
+/* the info column is exactly as wide as the dock, and long titles wrap inside it, so the bar never grows with the text */
+.info { width: 100%; min-width: 0; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.info p { margin: 0; }
+.ctl {
+  display: inline; width: auto; height: auto; padding: 0; margin-right: 8px;
+  font: inherit; color: var(--dim); background: none; border: 0; cursor: pointer;
+}
+.ctl:hover, .ctl:focus-visible { color: var(--ink); }
+.controls { white-space: nowrap; margin-top: 6px; }
+/* playback bar: a 4px track that fills with ink as the track plays. the box is 18px tall so it's easy to hit; click, drag or arrow keys seek */
+.bar { position: relative; width: 100%; height: 18px; margin-top: 4px; cursor: pointer; touch-action: none; }
+.bar::before { content: ''; position: absolute; left: 0; right: 0; top: calc(50% - 2px); height: 4px; background: color-mix(in srgb, var(--ink) 25%, transparent); }
+.bar .fill { position: absolute; left: 0; top: calc(50% - 2px); height: 4px; width: 0; background: var(--ink); }
+.time { display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.bar:focus-visible { outline: 1px solid var(--ink); outline-offset: 3px; }
+
+/* on wide screens the player docks to the left edge, like the name on the right; phones keep it in the flow */
+@media (min-width: 768px) {
+  #music {
+    position: fixed; left: 40px; top: 50%; transform: translateY(-50%);
+    /* up to 340px, but never closer than 24px to the 560px content column (280px is the floor on narrow screens) */
+    width: clamp(280px, calc(50vw - 280px - 64px), 340px); margin-top: 0; z-index: 90;
+    border-top: 0; padding-top: 0;
+  }
+}
+
+/* the player only shows on wide screens (a full-size window or fullscreen), and is hidden in a smaller window */
+@media (max-width: 1199px) {
+  #music { display: none; }
+}
 
 /* footer sits on the bottom edge of the page, below the content */
 body:has(> footer) { min-height: 100vh; display: flex; flex-direction: column; padding-bottom: 24px; }
@@ -116,4 +161,4 @@ footer a:hover { color: var(--ink); }
 :focus-visible { outline: 1px solid var(--ink); outline-offset: 3px; }
 
 /* the poro strip sits inside the content column, between the last section and the footer */
-.poro { position: relative; z-index: 2; width: 100%; height: 65px; margin: 58px 0 0; cursor: default; user-select: none; overflow: hidden; }
+.poro { position: relative; top: 8px; z-index: 2; width: 100%; height: 65px; margin: 58px 0 0; cursor: default; user-select: none; overflow: hidden; }

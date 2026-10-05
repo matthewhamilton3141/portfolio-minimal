@@ -54,15 +54,39 @@ btn.onclick = () => {
   const maxScroll = () => document.documentElement.scrollHeight - document.documentElement.clientHeight;
   const progress = () => maxScroll() > 0 ? Math.min(1, Math.max(0, scrollY / maxScroll())) : 0;
 
+  // one motion at a time: a jump, a flick's coast, or nothing. grabbing or wheeling cancels it
+  let motion = 0;
+  const stop = () => { motion++; col.classList.remove('spinning'); };
   const easeTo = (top, duration = 900) => {
-    const start = scrollY, dist = Math.min(top, maxScroll()) - start;
+    stop();
+    const start = scrollY, dist = Math.min(top, maxScroll()) - start, id = motion;
     if (Math.abs(dist) < 2) return;
     const t0 = performance.now();
     const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     const step = now => {
+      if (id !== motion) return;
       const p = Math.min((now - t0) / duration, 1);
       scrollTo(0, start + dist * ease(p));
       if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  };
+  // a flicked wheel keeps spinning and slows down by friction, v in page px per ms
+  const coast = v => {
+    stop();
+    if (Math.abs(v) < .05 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const id = motion;
+    let last = performance.now(), y = scrollY;
+    col.classList.add('spinning');
+    const step = now => {
+      if (id !== motion) return;
+      const dt = Math.min(now - last, 32);
+      last = now;
+      y = Math.min(maxScroll(), Math.max(0, y + v * dt));
+      scrollTo(0, y);
+      v *= Math.pow(.94, dt / 16);
+      if (Math.abs(v) > .02 && y > 0 && y < maxScroll()) requestAnimationFrame(step);
+      else col.classList.remove('spinning');
     };
     requestAnimationFrame(step);
   };
@@ -89,31 +113,56 @@ btn.onclick = () => {
     requestAnimationFrame(() => { ticking = false; sync(); });
   };
 
-  let winding = false, didDrag = false, startY = 0, startScroll = 0;
+  // grab the wheel and turn it: dragging the column's own height moves through the whole page, so the
+  // fill edge stays near the pointer. let go mid-drag and it keeps spinning
+  let winding = false, didDrag = false, startY = 0, startScroll = 0, samples = [];
+  const ratio = () => maxScroll() / col.offsetHeight;
   col.addEventListener('pointerdown', e => {
     if (e.pointerType === 'touch') return;
     e.preventDefault();
+    stop();
     winding = true; didDrag = false;
     startY = e.clientY; startScroll = scrollY;
+    samples = [{ t: e.timeStamp, y: e.clientY }];
     col.setPointerCapture(e.pointerId);
+    col.classList.add('grabbing');
     col.focus({ preventScroll: true });
   });
   col.addEventListener('pointermove', e => {
     if (!winding) return;
     if (Math.abs(e.clientY - startY) > 5) didDrag = true;
-    scrollTo(0, startScroll + ((e.clientY - startY) / 240) * maxScroll());
+    samples.push({ t: e.timeStamp, y: e.clientY });
+    while (samples.length > 2 && e.timeStamp - samples[0].t > 80) samples.shift();
+    scrollTo(0, startScroll + (e.clientY - startY) * ratio());
   });
-  col.addEventListener('pointerup', e => {
-    const glyph = e.target.closest('.namefill-glyph');
-    if (winding && !didDrag && glyph) jump(+glyph.dataset.i);
-    winding = didDrag = false;
-  });
-  col.addEventListener('pointercancel', () => { winding = didDrag = false; });
+  const release = e => {
+    if (!winding) return;
+    winding = false;
+    col.classList.remove('grabbing');
+    if (!didDrag) {
+      const glyph = e.type === 'pointerup' && e.target.closest('.namefill-glyph');
+      if (glyph) jump(+glyph.dataset.i);
+      return;
+    }
+    didDrag = false;
+    const a = samples[0], b = samples[samples.length - 1];
+    // a pointer that stopped before letting go has no spin left
+    if (e.timeStamp - b.t < 60 && b.t > a.t) coast(((b.y - a.y) / (b.t - a.t)) * ratio());
+  };
+  col.addEventListener('pointerup', release);
+  col.addEventListener('pointercancel', release);
+  addEventListener('wheel', stop, { passive: true });
   col.addEventListener('keydown', e => {
-    const d = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
-    if (!d) return;
+    const step = innerHeight * .4;
+    const keys = {
+      ArrowDown: () => easeTo(scrollY + step, 300), ArrowUp: () => easeTo(Math.max(0, scrollY - step), 300),
+      ArrowRight: () => jump(Math.min(2, Math.round(progress() * 2) + 1)),
+      ArrowLeft: () => jump(Math.max(0, Math.round(progress() * 2) - 1)),
+      Home: () => jump(0), End: () => easeTo(maxScroll()),
+    };
+    if (!keys[e.key]) return;
     e.preventDefault();
-    jump(Math.min(2, Math.max(0, Math.round(progress() * 2) + d)));
+    keys[e.key]();
   });
 
   addEventListener('scroll', requestSync, { passive: true });
@@ -133,11 +182,7 @@ btn.onclick = () => {
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const pad = n => String(n).padStart(2, '0');
   const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  const title = (count, date) => {
-    const label = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    if (count === 0) return `no contributions on ${label}`;
-    return `${count} contribution${count === 1 ? '' : 's'} on ${label}`;
-  };
+  const dayLabel = date => new Date(date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
   const render = days => {
     // pad the first week so each day lands on its weekday row (sun = 0), like github
@@ -174,16 +219,53 @@ btn.onclick = () => {
         if (!d) cell.classList.add('empty');
         else {
           cell.dataset.level = d.level ?? 0;
-          cell.title = title(d.count, d.date);
+          cell.dataset.count = d.count;
+          cell.dataset.date = dayLabel(d.date);
         }
         grid.append(cell);
       }
     }
 
+    // one shared tooltip: its text is the day's count and date, and it sits centered above the pointer
+    const tip = document.createElement('div');
+    tip.className = 'gh-tip';
+    tip.hidden = true;
+    let hovered = null;
+    const fill = cell => {
+      const n = Number(cell.dataset.count);
+      tip.textContent = n === 0
+        ? `no contributions on ${cell.dataset.date}`
+        : `${n} contribution${n === 1 ? '' : 's'} on ${cell.dataset.date}`;
+    };
+    const place = x => {
+      const half = tip.offsetWidth / 2;
+      const left = x - root.getBoundingClientRect().left;
+      tip.style.left = `${Math.min(Math.max(left, half), root.clientWidth - half)}px`;
+    };
+    const show = (cell, x) => {
+      if (cell !== hovered) {
+        hovered = cell;
+        fill(cell);
+        tip.style.top = `${cell.offsetTop}px`;
+        tip.hidden = false;
+      }
+      place(x);
+    };
+    const hide = () => { hovered = null; tip.hidden = true; };
+    grid.addEventListener('pointermove', e => {
+      const cell = e.target.closest('.gh-cell[data-date]');
+      if (cell) show(cell, e.clientX); else hide();
+    });
+    grid.addEventListener('pointerleave', hide);
+
+    // the total leads, as a highlighted phrase in running text, like the intro line on the page
     const sum = document.createElement('p');
     sum.className = 'gh-total';
-    sum.textContent = `${total} contributions in the last six months`;
-    root.append(months, grid, sum);
+    const count = document.createElement('span');
+    count.className = 'hl';
+    count.textContent = total;
+    sum.append(count, ` contributions in the last six months`);
+    root.replaceChildren(sum, months, grid, tip);
   };
 
   const msg = text => {

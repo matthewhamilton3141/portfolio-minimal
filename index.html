@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>matthew hamilton</title>
   <meta name="description" content="matthew hamilton — systems design engineering @ waterloo">
-  <link rel="stylesheet" href="site.css">
+  <link rel="stylesheet" href="site.css?v=25">
   <style>
     .art { display: block; width: 100%; margin-bottom: 40px; }
   </style>
@@ -41,7 +41,6 @@
       </div>
       <div class="row">
         <span>multiple hackathon winner</span>
-        <p>summerhacks, cursor hackathon</p>
       </div>
       <div class="row">
         <span>t500 sigma main in overwatch</span>
@@ -58,6 +57,24 @@
       <div class="gh-graph" id="gh-graph"></div>
     </section>
 
+    <section id="music" aria-label="music">
+      <div class="player" id="player" hidden>
+        <div class="info">
+          <p><span class="hl" id="track-title"></span></p>
+          <p class="dim" id="track-artist"></p>
+          <div class="bar" id="bar" role="slider" tabindex="0" aria-label="seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span class="fill" id="fill"></span>
+          </div>
+          <p class="time"><span id="cur">0:00</span><span id="dur">0:00</span></p>
+          <p class="controls">
+            <button class="ctl" id="prev" type="button">[prev]</button>
+            <button class="ctl" id="play" type="button">[play]</button>
+            <button class="ctl" id="next" type="button">[skip]</button>
+          </p>
+        </div>
+      </div>
+    </section>
+
     <div id="poro" class="poro" aria-hidden="true"></div>
   </main>
 
@@ -67,11 +84,12 @@
     <a href="#top">back to top</a>
   </footer>
 
-  <script src="site.js"></script>
+  <script src="site.js?v=7"></script>
+  <script src="music.js?v=16"></script>
   <script type="importmap">
     { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
   </script>
-  <script type="module" src="poro.js?v=5"></script>
+  <script type="module" src="poro.js?v=10"></script>
   <script>
     // ascii art drawn on a canvas. each theme's export is rendered once into an offscreen
     // canvas (per width), so a theme flip is a single image copy, not ~20k text draws
@@ -79,7 +97,7 @@
     const canvas = document.querySelector('.art'), ctx = canvas.getContext('2d');
     // mono by default. the cursor colours each 8px block it moves onto until every block has been coloured,
     // then reverts them until every block is mono again. colour fades back to mono block by block once you leave
-    const B = 8, R = 52, FADE = 0.0015;
+    const B = 8, R = 52, FADE = 0.01;
     let cache = {}, mono = {}, cacheW = 0, pos = null, raf = 0, lit = false;
     let fade = null, gw = 0, under = new Set();   // fade: per-block colour amount, 0 = mono
     // two passes, each must reach 100% before the next: colour every block, then revert every block
