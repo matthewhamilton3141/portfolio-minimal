@@ -1,13 +1,11 @@
 // shared by index.html and projects.html
 
-// theme: follows the system until clicked, then remembers. pages listen for 'themechange'.
+// theme: dark until the button picks light, then remembered. pages listen for 'themechange'.
 // a switch crossfades the whole page at once (a view transition), so the colours, the art and the cover all change
 // together. themechange's detail.faded tells the art it doesn't need its own sweep. browsers without view transitions,
 // or with reduced motion, switch straight away
 const root = document.documentElement, btn = document.getElementById('theme');
-const isDark = () => root.dataset.theme
-  ? root.dataset.theme === 'dark'
-  : matchMedia('(prefers-color-scheme: dark)').matches;
+const isDark = () => root.dataset.theme !== 'light';
 const applyTheme = (faded = false) => {
   root.toggleAttribute('data-dark', isDark());
   btn.textContent = isDark() ? '[淺]' : '[深]';   // the mode the click switches to
@@ -20,7 +18,6 @@ const switchTheme = change => {
   }
   document.startViewTransition(() => { change(); applyTheme(true); });
 };
-matchMedia('(prefers-color-scheme: dark)').onchange = () => switchTheme(() => {});
 try { const t = localStorage.getItem('theme'); if (t) root.dataset.theme = t; } catch {}
 applyTheme();
 btn.onclick = () => switchTheme(() => {

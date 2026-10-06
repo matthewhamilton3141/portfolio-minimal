@@ -1,23 +1,18 @@
 /* shared by index.html and projects.html */
+/* dark by default; light once it's picked with the theme button (site.js) */
 :root {
-  --bg: #fff;
-  --ink: #111;
-  --dim: #777;
-  --line: #e5e5e5;
-  /* a few bright colours for highlights. they're used as text, so the light ones are deep enough to read on white,
-     and dark mode gets lighter versions so they stay bright on black */
-  --blue: #2463ff; --pink: #e6006f; --green: #00995a; --gold: #c27400;
+  --bg: #0d0d0d;
+  --ink: #eee;
+  --dim: #888;
+  --line: #222;
+  /* a few bright colours for highlights. they're used as text, so dark mode's are light enough to stay bright on black,
+     and light mode gets deeper versions that read on white */
+  --blue: #6b9bff; --pink: #ff5ca8; --green: #2ee59d; --gold: #ffc233;
   --accent: var(--pink);
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0d0d0d; --ink: #eee; --dim: #888; --line: #222;
-    --blue: #6b9bff; --pink: #ff5ca8; --green: #2ee59d; --gold: #ffc233;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0d0d0d; --ink: #eee; --dim: #888; --line: #222;
-  --blue: #6b9bff; --pink: #ff5ca8; --green: #2ee59d; --gold: #ffc233;
+:root[data-theme="light"] {
+  --bg: #fff; --ink: #111; --dim: #777; --line: #e5e5e5;
+  --blue: #2463ff; --pink: #e6006f; --green: #00995a; --gold: #c27400;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
