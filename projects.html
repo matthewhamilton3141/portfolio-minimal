@@ -5,7 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>projects · matthew hamilton</title>
   <meta name="description" content="things matthew hamilton has built">
-  <link rel="stylesheet" href="site.css">
+  <!-- link previews: the same card as the home page (images/og.jpg) -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://matthew-hamilton-test.vercel.app/projects.html">
+  <meta property="og:title" content="projects · matthew hamilton">
+  <meta property="og:description" content="things matthew hamilton has built">
+  <meta property="og:image" content="https://matthew-hamilton-test.vercel.app/images/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="matthew hamilton, over an ascii art hong kong skyline">
+  <meta name="twitter:card" content="summary_large_image">
+  <!-- [m] in jetbrains mono, in the nav buttons' bracket style. svg for tabs, png for browsers without svg icons, and the home screen -->
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="images/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+  <link rel="stylesheet" href="site.css?v=53">
   <style>
     h1 a { text-decoration: none; }
 
@@ -49,15 +63,41 @@
         <a href="https://github.com/matthewhamilton3141">github</a>
         <a href="https://x.com/mhamilton3141">x</a>
         <a href="#">linkedin</a>
+        <button id="music-toggle" type="button" aria-label="music" aria-expanded="false" aria-controls="music">[♪]</button>
         <button id="theme" type="button" aria-label="switch to light mode">[淺]</button>
       </nav>
+      <div id="music" role="region" aria-label="music" hidden>
+        <div class="player" id="player">
+          <canvas class="cover" aria-hidden="true"></canvas>
+          <div class="info">
+            <p><span id="track-title"></span></p>
+            <p class="dim" id="track-artist"></p>
+            <div class="bar" id="bar" role="slider" tabindex="0" aria-label="seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <span class="fill" id="fill"></span>
+            </div>
+            <p class="time"><span id="cur">0:00</span><span id="dur">0:00</span></p>
+            <p class="controls">
+              <button class="ctl" id="prev" type="button">[prev]</button>
+              <button class="ctl" id="play" type="button">[play]</button>
+              <button class="ctl" id="next" type="button">[skip]</button>
+            </p>
+          </div>
+        </div>
+      </div>
     </header>
 
     <h2>projects</h2>
     <div class="grid-view" id="list"></div>
   </main>
 
-  <script src="site.js"></script>
+  <!-- here too, though nothing on this page uses it: an import map has to be in place before any module loads, and
+       poro.js (home) needs it when this page is swapped for home (site.js) -->
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+  <script src="site.js?v=50"></script>
+  <script src="ascii.js?v=9"></script>
+  <script src="music.js?v=23"></script>
   <script>
     const R2 = 'https://pub-642075d77d2b430c93bf3b1c60299af0.r2.dev/';
     // project data lifted from portfolio-html/script.js, same order

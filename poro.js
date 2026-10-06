@@ -14,11 +14,14 @@ const IDLE3_MS = 2500, DEATH_MS = 4000;
 const HALF = 1.55;   // half the strip's height in world units. the camera is orthographic, so the figure keeps
                      // its shape and size wherever it moves (a perspective camera stretches it at the edges)
 
-const stage = document.getElementById('poro');
 const probe = document.createElement('canvas');
-if (!(probe.getContext('webgl') || probe.getContext('experimental-webgl'))) {
-  stage.remove();
-} else {
+const webgl = !!(probe.getContext('webgl') || probe.getContext('experimental-webgl'));
+
+// a page part (onPage, site.js): set up each time home is shown, and torn down when it's swapped out
+onPage(signal => {
+  const stage = document.getElementById('poro');
+  if (!stage) return;
+  if (!webgl) { stage.remove(); return; }
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   stage.appendChild(renderer.domElement);
   const scene = new THREE.Scene();
@@ -39,7 +42,8 @@ if (!(probe.getContext('webgl') || probe.getContext('experimental-webgl'))) {
     Object.assign(camera, { left: -halfW, right: halfW, top: HALF, bottom: -HALF });
     camera.updateProjectionMatrix();
   };
-  new ResizeObserver(resize).observe(stage);
+  const ro = new ResizeObserver(resize);
+  ro.observe(stage);
   resize();
 
   let mixer, actions = {}, current = null, posX = 0, facing = Math.PI * 0.15, targetX = 0;
@@ -103,8 +107,8 @@ if (!(probe.getContext('webgl') || probe.getContext('experimental-webgl'))) {
     if (reacting) return;
     const r = stage.getBoundingClientRect();
     targetX = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width) * 2 - 1));
-  });
-  document.documentElement.addEventListener('pointerleave', () => { targetX = 0; });
+  }, { signal });
+  document.documentElement.addEventListener('pointerleave', () => { targetX = 0; }, { signal });
 
   stage.addEventListener('click', () => {
     if (reacting || !mixer) return;
@@ -146,4 +150,12 @@ if (!(probe.getContext('webgl') || probe.getContext('experimental-webgl'))) {
     group.rotation.y = facing;
     renderer.render(scene, camera);
   });
-}
+
+  // swapped out: stop drawing and let go of the gpu
+  signal.addEventListener('abort', () => {
+    renderer.setAnimationLoop(null);
+    renderer.dispose();
+    ro.disconnect();
+    clearTimeout(overrideTimer);
+  });
+});

@@ -25,12 +25,20 @@ btn.onclick = () => switchTheme(() => {
   try { localStorage.setItem('theme', root.dataset.theme); } catch {}
 });
 
+// pages: home and projects swap in place instead of reloading (see the end of this file), so the header, with the music
+// playing in it, carries on. what belongs to one page's content runs through onPage: now, and again after every swap,
+// given a signal that aborts when that page is swapped out, for its listeners, timers and loops to stop on
+const pageInits = [];
+let pageCtl = new AbortController();
+const onPage = init => { pageInits.push(init); init(pageCtl.signal); };
+
 // 陳文飛 scroll dock: each glyph fills over a third of the page.
 // click a glyph to jump to its section, drag the column to scrub.
 (() => {
   const desktop = matchMedia('(hover: hover) and (pointer: fine) and (min-width: 768px)');
   // each page names its three jump targets: <body data-jumps="top,done,now">
-  const CHARS = ['陳', '文', '飛'], JUMPS = (document.body.dataset.jumps || '').split(',');
+  // (read at each jump: the dock stays across page swaps)
+  const CHARS = ['陳', '文', '飛'], jumps = () => (document.body.dataset.jumps || '').split(',');
 
   const dock = document.createElement('div');
   dock.className = 'namefill-dock';
@@ -96,7 +104,7 @@ btn.onclick = () => switchTheme(() => {
     requestAnimationFrame(step);
   };
   const jump = i => {
-    const el = document.getElementById(JUMPS[i]);
+    const el = document.getElementById(jumps()[i]);
     easeTo(el ? el.getBoundingClientRect().top + scrollY - 40 : (i / 2) * maxScroll());
   };
 
@@ -181,136 +189,179 @@ btn.onclick = () => switchTheme(() => {
 
 // github contribution graph: ink tints at each level, so it follows the monochrome theme
 (() => {
-  const root = document.getElementById('gh-graph');
-  if (!root) return;
   const USER = 'matthewhamilton3141', WEEKS = 26;
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const pad = n => String(n).padStart(2, '0');
   const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   const dayLabel = date => new Date(date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-  const render = days => {
-    clearInterval(spinner);
-    // pad the first week so each day lands on its weekday row (sun = 0), like github
-    const lead = days[0] ? new Date(days[0].date + 'T12:00:00').getDay() : 0;
-    const cells = [...Array(lead).fill(null), ...days];
-    while (cells.length % 7) cells.push(null);
-    const weeks = [];
-    for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
-    const total = days.reduce((n, d) => n + d.count, 0);
-
-    root.textContent = '';
-    root.style.setProperty('--weeks', weeks.length);
-
-    const months = document.createElement('div');
-    months.className = 'gh-months';
-    let last = -1;
-    for (const week of weeks) {
-      const day = week.find(Boolean), span = document.createElement('span');
-      if (day) {
-        const m = new Date(day.date + 'T12:00:00').getMonth();
-        if (m !== last) { span.textContent = MONTHS[m]; last = m; }
-      }
-      months.append(span);
-    }
-
-    const grid = document.createElement('div');
-    grid.className = 'gh-cells';
-    grid.setAttribute('role', 'img');
-    grid.setAttribute('aria-label', `${total} contributions in the last six months`);
-    for (let row = 0; row < 7; row++) {
-      for (const week of weeks) {
-        const d = week[row], cell = document.createElement('span');
-        cell.className = 'gh-cell';
-        if (!d) cell.classList.add('empty');
-        else {
-          cell.dataset.level = d.level ?? 0;
-          cell.dataset.count = d.count;
-          cell.dataset.date = dayLabel(d.date);
-        }
-        grid.append(cell);
-      }
-    }
-
-    // one shared tooltip: its text is the day's count and date, and it sits centered above the pointer
-    const tip = document.createElement('div');
-    tip.className = 'gh-tip';
-    tip.hidden = true;
-    let hovered = null;
-    const fill = cell => {
-      const n = Number(cell.dataset.count);
-      tip.textContent = n === 0
-        ? `no contributions on ${cell.dataset.date}`
-        : `${n} contribution${n === 1 ? '' : 's'} on ${cell.dataset.date}`;
-    };
-    const place = x => {
-      const half = tip.offsetWidth / 2;
-      const left = x - root.getBoundingClientRect().left;
-      tip.style.left = `${Math.min(Math.max(left, half), root.clientWidth - half)}px`;
-    };
-    const show = (cell, x) => {
-      if (cell !== hovered) {
-        hovered = cell;
-        fill(cell);
-        tip.style.top = `${cell.offsetTop}px`;
-        tip.hidden = false;
-      }
-      place(x);
-    };
-    const hide = () => { hovered = null; tip.hidden = true; };
-    grid.addEventListener('pointermove', e => {
-      const cell = e.target.closest('.gh-cell[data-date]');
-      if (cell) show(cell, e.clientX); else hide();
-    });
-    grid.addEventListener('pointerleave', hide);
-
-    // the total leads, as plain text above the graph
-    const sum = document.createElement('p');
-    sum.className = 'gh-total';
-    sum.textContent = `${total} contributions in the last six months`;
-    root.replaceChildren(sum, months, grid, tip);
-  };
-
-  const msg = text => {
-    clearInterval(spinner);
-    const p = document.createElement('p');
-    p.className = 'gh-total';
-    p.textContent = text;
-    root.replaceChildren(p);
-    return p;
-  };
-  // a braille spinner while it loads; one still frame for reduced motion
-  const SPIN = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏';
-  let spinner = 0, frame = 0;
-  const p = msg(`${SPIN[0]} loading contributions`);
-  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    spinner = setInterval(() => { p.textContent = `${SPIN[frame = (frame + 1) % SPIN.length]} loading contributions`; }, 80);
-  }
-  const today = new Date(), todayStr = iso(today);
-  const ctrl = new AbortController();
-  const timeout = setTimeout(() => ctrl.abort(), 8000);
-  fetch(`https://github-contributions-api.jogruber.de/v4/${USER}?y=${today.getFullYear()}&y=${today.getFullYear() - 1}&_=${todayStr}`, {
-    cache: 'no-store',
-    signal: ctrl.signal,
-  })
-    .then(r => { if (!r.ok) throw new Error('bad response'); return r.json(); })
-    .then(data => {
-      const days = (data.contributions || [])
+  // the contributions are fetched once a page load and shared by every visit to home after that
+  let contributions = null;
+  const fetchDays = () => {
+    const today = new Date(), todayStr = iso(today);
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 8000);
+    return fetch(`https://github-contributions-api.jogruber.de/v4/${USER}?y=${today.getFullYear()}&y=${today.getFullYear() - 1}&_=${todayStr}`, {
+      cache: 'no-store',
+      signal: ctrl.signal,
+    })
+      .then(r => { if (!r.ok) throw new Error('bad response'); return r.json(); })
+      .then(data => (data.contributions || [])
         .filter(d => d.date <= todayStr)
         .sort((a, b) => a.date.localeCompare(b.date))
-        .slice(-(WEEKS * 7));
-      render(days);
-    })
-    .catch(() => msg('couldn’t load contributions'))
-    .finally(() => clearTimeout(timeout));
+        .slice(-(WEEKS * 7)))
+      .finally(() => clearTimeout(timeout));
+  };
+
+  onPage(signal => {
+    const root = document.getElementById('gh-graph');
+    if (!root) return;
+
+    const render = days => {
+      clearInterval(spinner);
+      const total = days.reduce((n, d) => n + d.count, 0);
+      // the graph starts on a sunday (row 0, like github), so it is always WEEKS columns: the height its placeholder
+      // (msg) reserves. a partial first week's days drop off the front
+      const first = days[0] ? new Date(days[0].date + 'T12:00:00').getDay() : 0;
+      const cells = days.slice(first);
+      while (cells.length % 7) cells.push(null);
+      const weeks = [];
+      for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+
+      root.textContent = '';
+      root.style.setProperty('--weeks', weeks.length);
+
+      const months = document.createElement('div');
+      months.className = 'gh-months';
+      let last = -1;
+      for (const week of weeks) {
+        const day = week.find(Boolean), span = document.createElement('span');
+        if (day) {
+          const m = new Date(day.date + 'T12:00:00').getMonth();
+          if (m !== last) { span.textContent = MONTHS[m]; last = m; }
+        }
+        months.append(span);
+      }
+
+      const grid = document.createElement('div');
+      grid.className = 'gh-cells';
+      grid.setAttribute('role', 'img');
+      grid.setAttribute('aria-label', `${total} contributions in the last six months`);
+      for (let row = 0; row < 7; row++) {
+        weeks.forEach((week, w) => {
+          const d = week[row], cell = document.createElement('span');
+          cell.className = 'gh-cell';
+          cell.style.setProperty('--i', w + row * .6);   // its place in the opening wave
+          if (!d) cell.classList.add('empty');
+          else {
+            cell.dataset.level = d.level ?? 0;
+            cell.dataset.count = d.count;
+            cell.dataset.date = dayLabel(d.date);
+          }
+          grid.append(cell);
+        });
+      }
+
+      // one shared tooltip: its text is the day's count and date, and it sits centered above the pointer
+      const tip = document.createElement('div');
+      tip.className = 'gh-tip';
+      tip.hidden = true;
+      let hovered = null;
+      const fill = cell => {
+        const n = Number(cell.dataset.count);
+        tip.textContent = n === 0
+          ? `no contributions on ${cell.dataset.date}`
+          : `${n} contribution${n === 1 ? '' : 's'} on ${cell.dataset.date}`;
+      };
+      const place = x => {
+        const half = tip.offsetWidth / 2;
+        const left = x - root.getBoundingClientRect().left;
+        tip.style.left = `${Math.min(Math.max(left, half), root.clientWidth - half)}px`;
+      };
+      const show = (cell, x) => {
+        if (cell !== hovered) {
+          hovered = cell;
+          fill(cell);
+          tip.style.top = `${cell.offsetTop}px`;
+          tip.hidden = false;
+        }
+        place(x);
+      };
+      const hide = () => { hovered = null; tip.hidden = true; };
+      grid.addEventListener('pointermove', e => {
+        const cell = e.target.closest('.gh-cell[data-date]');
+        if (cell) show(cell, e.clientX); else hide();
+      });
+      grid.addEventListener('pointerleave', hide);
+
+      // the total leads, as plain text above the graph
+      const sum = document.createElement('p');
+      sum.className = 'gh-total';
+      sum.textContent = `${total} contributions in the last six months`;
+      root.replaceChildren(sum, months, grid, tip);
+
+      // on opening (once a tab), the squares fade in as a wave from the oldest week to today, once the graph is in view.
+      // only opacity, so the mountains' halos around them (which read their boxes) aren't thrown off
+      let waved = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      try { waved ||= !!sessionStorage.getItem('waved'); } catch {}
+      if (!waved && 'IntersectionObserver' in window) {
+        grid.classList.add('wait');
+        const io = new IntersectionObserver(([e]) => {
+          if (!e.isIntersecting) return;
+          io.disconnect();
+          grid.classList.replace('wait', 'in');
+          try { sessionStorage.setItem('waved', '1'); } catch {}
+        }, { threshold: .3 });
+        io.observe(grid);
+        signal.addEventListener('abort', () => io.disconnect());
+      }
+    };
+
+    // reserve: while loading, the graph's whole frame is already there (the total line, the month row and WEEKS × 7
+    // empty cells), so the page doesn't shrink and then jump down when the squares arrive
+    const msg = (text, reserve = false) => {
+      clearInterval(spinner);
+      const p = document.createElement('p');
+      p.className = 'gh-total';
+      p.textContent = text;
+      if (!reserve) { root.replaceChildren(p); return p; }
+      root.style.setProperty('--weeks', WEEKS);
+      const months = document.createElement('div');
+      months.className = 'gh-months';
+      months.append(...Array.from({ length: WEEKS }, () => document.createElement('span')));
+      const grid = document.createElement('div');
+      grid.className = 'gh-cells';
+      // the placeholder tiles sit where the real ones will, in the same wave order, so they fade in from place
+      grid.append(...Array.from({ length: WEEKS * 7 }, (_, k) => {
+        const cell = document.createElement('span');
+        cell.className = 'gh-cell ph';
+        cell.style.setProperty('--i', Math.floor(k / 7) + (k % 7) * .6);
+        return cell;
+      }));
+      root.replaceChildren(p, months, grid);
+      return p;
+    };
+    // a braille spinner while it loads; one still frame for reduced motion
+    const SPIN = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏';
+    let spinner = 0, frame = 0;
+    const p = msg(`${SPIN[0]} loading contributions`, true);
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      spinner = setInterval(() => { p.textContent = `${SPIN[frame = (frame + 1) % SPIN.length]} loading contributions`; }, 80);
+    }
+
+    signal.addEventListener('abort', () => clearInterval(spinner));
+    (contributions ||= fetchDays())
+      .then(days => { if (!signal.aborted) render(days); })
+      .catch(() => { contributions = null; if (!signal.aborted) msg('couldn’t load contributions'); });
+  });
 })();
 
 // "back to top" links scroll explicitly rather than relying on the #top anchor
-document.querySelectorAll('a[href="#top"]').forEach(a => a.addEventListener('click', e => {
+onPage(() => document.querySelectorAll('a[href="#top"]').forEach(a => a.addEventListener('click', e => {
   e.preventDefault();
   scrollTo({ top: 0, behavior: 'smooth' });
   history.replaceState(null, '', location.pathname + location.search);
-}));
+})));
 
 // mountains behind the page (a torres del paine panorama, sky cut out by tools/mountains_mask.py), drawn in pixel-to-character's
 // "dots" style: the photo is sampled on an even lattice of round dots and dithered with an 8×8 bayer matrix. each
@@ -330,10 +381,10 @@ document.querySelectorAll('a[href="#top"]').forEach(a => a.addEventListener('cli
   const SCALE = .7;      // sets the height: as tall as the photo would be at this share of the window's width
   const WIDTH = .95;     // the photo's actual width, as a share of the window's (wider than SCALE stretches it sideways)
   const FADE = .12;      // how much of the photo's width each side fades over
-  // the cursor lights the dots it passes over, like the hero art (ascii.js): each turns more vivid and grows, then fades
-  // back over a second or two. GLOW_R px around the pointer; GLOW_FADE lost per frame; at full glow, GLOW_SAT × the
-  // saturation and GROW more radius; LEVELS steps between, so lit dots still share fills
-  const GLOW_R = 52, GLOW_FADE = .01, GLOW_SAT = 1.6, GROW = .35, LEVELS = 4;
+  // the cursor lights the 8px blocks it passes over, like the hero art (ascii.js): each block's dots turn more vivid, then
+  // fade back block by block. GLOW_R px around the pointer; GLOW_FADE lost per frame; at full glow, GLOW_SAT × the
+  // saturation; LEVELS steps between, so lit dots still share fills
+  const BLK = 8, GLOW_R = 52, GLOW_FADE = .01, GLOW_SAT = 1.6, LEVELS = 4;
   const tint = (fill, amount) => {
     const [r, g, b] = fill.match(/\d+/g).map(v => v / 255);
     const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
@@ -379,11 +430,21 @@ document.querySelectorAll('a[href="#top"]').forEach(a => a.addEventListener('cli
   // text over the mountains gets a halo where the dots dissolve, so it stays readable. dots are dithered, so lowering
   // their density near the words thins them out gradually, and a fixed per-dot jitter makes the edge fuzzy. the halos
   // follow the words as the page scrolls, easing in and out
-  const PAD = 0, FALL = 5;   // px around each line where the dots are fully cleared, then how far they take to come back
+  // px around each line where the dots are fully cleared, then how far they take to come back. NOISE: the share of
+  // clearance each dot can give back, by its jitter, so cleared areas keep a few stray dots instead of a hard block
+  const PAD = 0, FALL = 5, NOISE = .6;
   const TAU = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 90;   // easing time constant, ms
+  // on opening (once a tab), the mountains fill in from the base up to the peaks: a front rises through the lattice and
+  // each dot's tone ramps up behind it, so the bayer dither brings the dots in as it passes. RISE ms; SOFT is how much of
+  // the height the front's edge spans. reduced motion skips it
+  const RISE = 1600, SOFT = .35;
+  let rise = 0;   // when the rise started, while it's running
+  let risen = !TAU;
+  try { risen ||= !!sessionStorage.getItem('risen'); sessionStorage.setItem('risen', '1'); } catch {}
   // non-text things that also get a halo. the github graph clears square by square, so the hidden cells where its
-  // first and last weeks are short stay dotted instead of leaving blank corners
-  const KEEP = '.art, .gh-cell:not(.empty), .hl, img.ico';
+  // first and last weeks are short stay dotted instead of leaving blank corners. the projects' svg buttons are icons
+  // with no text, so their boxes get the halo too
+  const KEEP = '.art, .gh-cell:not(.empty), .hl, img.ico, .proj-link', BTN_MARGIN = 0;   // px of dot-free space past each button's edge
 
   let dots = null;   // the sampled lattice: { gw, gh, H, tone, key, fills, jit, rad, alpha }
   let cur = null, target = null, raf = 0, last = 0, dirty = true;
@@ -413,6 +474,7 @@ document.querySelectorAll('a[href="#top"]').forEach(a => a.addEventListener('cli
 
     // each dot's tone and colour (4 bits a channel, so colours share fills), and its jitter for the halo's fuzzy edge
     const n = gw * gh, tone = new Float32Array(n), key = new Uint16Array(n).fill(65535), jit = new Float32Array(n);
+    const bw = Math.ceil(W / BLK), bh = Math.ceil(H / BLK);   // the glow grid: one value per 8px block
     const fills = [], index = new Map();
     for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
       const c = j * gw + i, k = c * 4, a = px[k + 3] / 255 * side(i);
@@ -423,11 +485,13 @@ document.querySelectorAll('a[href="#top"]').forEach(a => a.addEventListener('cli
       jit[c] = (Math.imul(c, 2654435761) >>> 0) / 4294967296 * .6;
     }
     const lit = Array.from({ length: LEVELS }, (_, L) => fills.map(f => tint(f, (L + 1) / LEVELS)));
-    dots = { gw, gh, W, H, tone, key, fills, lit, glow: new Float32Array(n), jit, rad: R[theme], alpha: ALPHA[theme] };
+    dots = { gw, gh, W, H, tone, key, fills, lit, bw, glow: new Float32Array(bw * bh), jit, rad: R[theme], alpha: ALPHA[theme] };
     cur = new Float32Array(n); target = new Float32Array(n);
     dirty = true;
     halos(); cur.set(target);   // start settled, so a load or theme flip doesn't animate the halos in
+    if (!risen) { risen = true; rise = performance.now(); }   // the first build, once the photo has loaded
     render();
+    if (rise && !raf) raf = requestAnimationFrame(frame);
   };
 
   // the text and boxes to keep clear: every visible text line on the page, plus KEEP
@@ -437,13 +501,20 @@ document.querySelectorAll('a[href="#top"]').forEach(a => a.addEventListener('cli
     });
     const range = document.createRange();
     for (let t; (t = walk.nextNode());) { range.selectNodeContents(t); out.push(...range.getClientRects()); }
-    for (const el of document.querySelectorAll(KEEP)) if (!el.closest('header')) out.push(el.getBoundingClientRect());
+    for (const el of document.querySelectorAll(KEEP)) {
+      if (el.closest('header')) continue;
+      const r = el.getBoundingClientRect();
+      // the svg buttons get a little dot-free space past their edges, so the icons don't sit against the dots
+      if (!el.matches('.proj-link')) { out.push(r); continue; }
+      const m = BTN_MARGIN;
+      out.push({ left: r.left - m, right: r.right + m, top: r.top - m, bottom: r.bottom + m, width: r.width + 2 * m });
+    }
     return out;
   };
 
   // the halo map: 1 where dots should be gone, fading to 0 FALL px past each padded box
   const halos = () => {
-    const { gw, gh, H } = dots, top = innerHeight - H, reach = PAD + FALL;
+    const { gw, gh, H, jit } = dots, top = innerHeight - H, reach = PAD + FALL;
     target.fill(0);
     for (const r of rects()) {
       if (!r.width || r.bottom < top - reach || r.top > innerHeight + reach) continue;
@@ -458,25 +529,31 @@ document.querySelectorAll('a[href="#top"]').forEach(a => a.addEventListener('cli
         if (v > target[c]) target[c] = v;
       }
     }
+    // the clearance is eased by each dot's jitter (0 to 1 after dividing by its max), so some dots survive inside it
+    for (let c = 0; c < target.length; c++) target[c] *= 1 - NOISE * jit[c] / .6;
     dirty = false;
   };
 
   const render = () => {
-    const { gw, gh, W, H, tone, key, fills, lit, glow, jit, rad, alpha } = dots;
+    const { gw, gh, W, H, tone, key, fills, lit, bw, glow, jit, rad, alpha } = dots, bh = glow.length / bw;
     const paths = fills.map(() => new Path2D());
     const glowing = new Map();   // level × 65536 + fill → path, for the dots the cursor has lit
+    // the rise: how far up each row the front has reached (eased out), as a share of the row's tone
+    const t = rise ? Math.min(1, (performance.now() - rise) / RISE) : 1, front = (1 - (1 - t) ** 3) * (1 + SOFT);
+    const up = rise ? Float32Array.from({ length: gh }, (_, j) => Math.min(1, Math.max(0, (front - 1 + (j + .5) / gh) / SOFT))) : null;
     for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
       const c = j * gw + i;
-      if (key[c] === 65535 || tone[c] - cur[c] * (1 + jit[c]) <= BAYER[j % 8][i % 8]) continue;
-      const x = (i + .5) * S, y = (j + .5) * S, L = Math.ceil(glow[c] * LEVELS);
-      let p = paths[key[c]], r = rad;
+      if (key[c] === 65535 || tone[c] * (up ? up[j] : 1) - cur[c] * (1 + jit[c]) <= BAYER[j % 8][i % 8]) continue;
+      const x = (i + .5) * S, y = (j + .5) * S;
+      const b = Math.min(bh - 1, y / BLK | 0) * bw + Math.min(bw - 1, x / BLK | 0), L = Math.ceil(glow[b] * LEVELS);
+      let p = paths[key[c]];
       if (L) {
         const id = L * 65536 + key[c];
         if (!glowing.has(id)) glowing.set(id, new Path2D());
-        p = glowing.get(id); r = rad * (1 + GROW * L / LEVELS);
+        p = glowing.get(id);
       }
-      p.moveTo(x + r, y);
-      p.arc(x, y, r, 0, Math.PI * 2);
+      p.moveTo(x + rad, y);
+      p.arc(x, y, rad, 0, Math.PI * 2);
     }
     ctx.clearRect(0, 0, W, H);
     ctx.globalAlpha = alpha;
@@ -504,18 +581,19 @@ document.querySelectorAll('a[href="#top"]').forEach(a => a.addEventListener('cli
       if (d > .01 || d < -.01) { cur[c] += d * k; moving = true; } else cur[c] = target[c];
     }
     // glow: everything fades a step, then the dots around a pointer that has moved light up fully
-    const { gw, gh, H, glow } = dots;
+    const { H, bw, glow } = dots, bh = glow.length / bw;
     for (let c = 0; c < glow.length; c++) if (glow[c]) { glow[c] = Math.max(0, glow[c] - GLOW_FADE); moving = true; }
     if (pointer && moved) {
       const px = pointer.x, py = pointer.y - (innerHeight - H);
-      const j0 = Math.max(0, Math.floor((py - GLOW_R) / S)), j1 = Math.min(gh - 1, Math.floor((py + GLOW_R) / S));
-      const i0 = Math.max(0, Math.floor((px - GLOW_R) / S)), i1 = Math.min(gw - 1, Math.floor((px + GLOW_R) / S));
+      const j0 = Math.max(0, Math.floor((py - GLOW_R) / BLK)), j1 = Math.min(bh - 1, Math.floor((py + GLOW_R) / BLK));
+      const i0 = Math.max(0, Math.floor((px - GLOW_R) / BLK)), i1 = Math.min(bw - 1, Math.floor((px + GLOW_R) / BLK));
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-        const dx = (i + .5) * S - px, dy = (j + .5) * S - py;
-        if (dx * dx + dy * dy < GLOW_R * GLOW_R) { glow[j * gw + i] = 1; moving = true; }
+        const dx = (i + .5) * BLK - px, dy = (j + .5) * BLK - py;
+        if (dx * dx + dy * dy < GLOW_R * GLOW_R) { glow[j * bw + i] = 1; moving = true; }
       }
     }
     moved = false;
+    if (rise) { if (now - rise >= RISE) rise = 0; moving = true; }   // one more frame after it ends draws them whole
     render();
     if (moving || dirty) raf = requestAnimationFrame(frame); else last = 0;
   };
@@ -540,3 +618,96 @@ document.querySelectorAll('a[href="#top"]').forEach(a => a.addEventListener('cli
   build();
 })();
 
+// links between the site's own pages swap the page in place instead of loading it, so the header stays and the music
+// doesn't cut out. the new page's html is fetched (on hover, ahead of the click), and everything but the header is
+// taken from it: its title, styles and jump targets, the header's title and links, and the content and footer under
+// the header. then the page parts (onPage) run again, and so do the new page's own scripts: inline ones each visit (in a
+// block, so a second visit's consts don't clash with the first's), and external ones only if this tab hasn't loaded them
+(() => {
+  const page = url => {
+    const u = new URL(url, location.href);
+    if (u.origin !== location.origin || !/\/(index\.html|projects\.html)?$/.test(u.pathname)) return null;
+    return u.pathname.replace(/\/$/, '/index.html');
+  };
+  let here = page(location.href);
+  const fetched = new Map();   // page → promise of its html
+  const get = path => {
+    if (!fetched.has(path)) fetched.set(path, fetch(path).then(r => { if (!r.ok) throw new Error('bad response'); return r.text(); })
+      .catch(e => { fetched.delete(path); throw e; }));
+    return fetched.get(path);
+  };
+
+  const swap = html => {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    pageCtl.abort();
+    pageCtl = new AbortController();
+
+    document.title = doc.title;
+    document.head.querySelectorAll('style').forEach(el => el.remove());
+    document.head.append(...doc.head.querySelectorAll('style'));
+    const desc = doc.head.querySelector('meta[name="description"]');
+    if (desc) document.head.querySelector('meta[name="description"]')?.setAttribute('content', desc.content);
+    document.body.dataset.jumps = doc.body.dataset.jumps || '';
+
+    const header = document.querySelector('main > header'), next = doc.querySelector('main > header');
+    header.querySelector('h1').replaceWith(next.querySelector('h1'));
+    const nav = header.querySelector('nav');
+    nav.querySelectorAll('a').forEach(a => a.remove());
+    nav.prepend(...next.querySelectorAll('nav a'));
+
+    const main = document.querySelector('main');
+    [...main.children].forEach(el => { if (el !== header) el.remove(); });
+    main.append(...[...doc.querySelector('main').children].filter(el => el.tagName !== 'HEADER'));
+    document.querySelector('body > footer')?.remove();
+    const footer = doc.querySelector('body > footer');
+    if (footer) main.after(footer);
+
+    pageInits.forEach(init => init(pageCtl.signal));
+    const loaded = new Set([...document.scripts].filter(el => el.src).map(el => new URL(el.src).pathname));
+    for (const old of doc.querySelectorAll('body script')) {
+      if (old.type === 'importmap') continue;
+      const src = old.getAttribute('src');
+      if (src && loaded.has(new URL(src, location.href).pathname)) continue;
+      const run = document.createElement('script');
+      if (old.type) run.type = old.type;
+      if (src) run.src = src;
+      else run.textContent = `{\n${old.textContent}\n}`;
+      document.body.append(run);
+      if (!src) run.remove();   // inline ones have run by now
+    }
+  };
+
+  const go = async (url, { push = true, y = 0 } = {}) => {
+    const path = page(url);
+    let html;
+    try { html = await get(path); } catch { location.href = url; return; }
+    if (push) {
+      history.replaceState({ y: scrollY }, '');   // where to come back to
+      history.pushState({ y: 0 }, '', url);
+      history.scrollRestoration = 'manual';   // the swap puts the scroll back itself
+    }
+    here = path;
+    const show = () => { swap(html); scrollTo(0, y); };
+    if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(show);
+    else show();
+  };
+
+  addEventListener('click', e => {
+    const a = e.target.closest?.('a[href]');
+    if (!a || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target) return;
+    const path = page(a.href);
+    if (!path || new URL(a.href).hash) return;
+    e.preventDefault();
+    if (path === here) scrollTo({ top: 0, behavior: 'smooth' });
+    else go(a.href);
+  });
+  // fetch a page as soon as the pointer is on its link
+  addEventListener('pointerover', e => {
+    const a = e.target.closest?.('a[href]'), path = a && page(a.href);
+    if (path && path !== here) get(path).catch(() => {});
+  });
+  addEventListener('popstate', e => {
+    const path = page(location.href);
+    if (path && path !== here) go(location.href, { push: false, y: e.state?.y || 0 });
+  });
+})();

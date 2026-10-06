@@ -1,4 +1,17 @@
 /* shared by index.html and projects.html */
+/* JetBrains Mono (OFL), self-hosted in fonts/ so it loads with the page */
+@font-face {
+  font-family: 'JetBrains Mono'; font-weight: 400; font-display: swap;
+  src: url(fonts/jetbrains-mono-latin-400-normal.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono'; font-weight: 500; font-display: swap;
+  src: url(fonts/jetbrains-mono-latin-500-normal.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono'; font-weight: 700; font-display: swap;
+  src: url(fonts/jetbrains-mono-latin-700-normal.woff2) format('woff2');
+}
 /* dark by default; light once it's picked with the theme button (site.js) */
 :root {
   --bg: #0d0d0d;
@@ -24,7 +37,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 body {
   background: var(--bg);
   color: var(--ink);
-  font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+  font: 15px/1.6 'JetBrains Mono', ui-monospace, Menlo, monospace;
   padding: 16px 16px 96px;
 }
 main { width: min(560px, 100%); margin: 0 auto; }
@@ -39,8 +52,9 @@ header {
   -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
 }
 nav { display: flex; align-items: center; gap: 16px; }
-nav a { color: var(--dim); text-decoration: none; }
-nav a:hover { color: var(--ink); }
+/* the padding is cancelled by the negative margin, so the highlight adds no width and the links don't wrap */
+nav a { color: var(--dim); text-decoration: none; padding: 0 2px; margin: 0 -2px; }
+nav a:hover, nav a:focus-visible { background: var(--accent); color: #fff; }
 
 h1 { font-size: 15px; font-weight: 500; }
 
@@ -73,18 +87,12 @@ button:hover { color: var(--ink); }
 #theme:hover, #theme:focus-visible, #music-toggle:hover, #music-toggle:focus-visible, #music-toggle[aria-expanded="true"] { background: var(--accent); color: #fff; }
 
 section { margin-top: 18px; }
-/* the rule separates the timelines (done, now, github), not the items inside them */
-section + section, #done { border-top: 1px solid var(--line); padding-top: 10px; }
-#github { border-top: 0; }
 h2 { font-size: 15px; font-weight: 400; color: var(--dim); margin-bottom: 6px; }
 
-.row {
-  display: grid; grid-template-columns: 1fr auto; gap: 4px 16px;
-  padding: 5px 0;
-}
-.row p { grid-column: 1 / -1; color: var(--dim); }
-/* a highlight that is the row's only child would stretch to the full 1fr column; keep it hugging the text */
-.row > .hl { justify-self: start; }
+/* dash bullets: the dash hangs in the gutter so wrapped lines line up under the text */
+.list { list-style: none; }
+.list li { padding: 5px 0 5px 1.5em; text-indent: -1.5em; }
+.list li::before { content: '- '; color: var(--dim); }
 
 /* 陳文飛 — the name is the place. Each character fills in turn as you scroll.
    ported from portfolio-html; font is a 3-glyph subset of Noto Serif SC (OFL) */
@@ -126,9 +134,19 @@ h2 { font-size: 15px; font-weight: 400; color: var(--dim); margin-bottom: 6px; }
 .gh-months span { font-size: 11px; line-height: 16px; color: var(--dim); white-space: nowrap; }
 .gh-cell { aspect-ratio: 1; background: var(--line); }
 .gh-cell.empty { visibility: hidden; }
-.gh-cell[data-level="1"] { background: color-mix(in srgb, var(--ink) 25%, transparent); }
-.gh-cell[data-level="2"] { background: color-mix(in srgb, var(--ink) 45%, transparent); }
-.gh-cell[data-level="3"] { background: color-mix(in srgb, var(--ink) 70%, transparent); }
+/* while it loads (site.js msg): placeholder tiles fade in where they'll sit, in the wave's order, then keep breathing
+   until the real squares replace them */
+.gh-cell.ph { background: var(--line); animation: gh-ph 1.4s ease-in-out infinite alternate backwards; animation-delay: calc(var(--i) * 14ms); }
+@keyframes gh-ph { from { opacity: .2; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .gh-cell.ph { animation: none; } }
+/* the opening wave (site.js): squares wait unseen, then fade in in order of --i, oldest week first */
+.gh-cells.wait .gh-cell { opacity: 0; }
+.gh-cells.in .gh-cell { animation: gh-in .4s ease-out backwards; animation-delay: calc(var(--i) * 16ms); }
+@keyframes gh-in { from { opacity: 0; } }
+/* solid tints: each level is mixed with the page colour, so the tiles are opaque and don't show the mountains through */
+.gh-cell[data-level="1"] { background: color-mix(in srgb, var(--ink) 25%, var(--bg)); }
+.gh-cell[data-level="2"] { background: color-mix(in srgb, var(--ink) 45%, var(--bg)); }
+.gh-cell[data-level="3"] { background: color-mix(in srgb, var(--ink) 70%, var(--bg)); }
 .gh-cell[data-level="4"] { background: var(--ink); }
 .gh-graph { position: relative; }
 .gh-tip {

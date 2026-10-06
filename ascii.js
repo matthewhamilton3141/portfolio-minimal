@@ -5,9 +5,10 @@
 // muted by default (half the saturation). the cursor brings each 8px block it moves onto up to full colour until
 // every block is full, then mutes them again until every block is muted. full colour fades back to muted block by block
 // once you leave. with { hover: false } the art is shown in full colour and the cursor does nothing (the player's cover).
+// { signal } stops it when that signal aborts (the hero, when the page is swapped out).
 // reveal() brings the art in block by block: each block is blank, flickers glyphs from the art's own alphabet,
 // then settles. a theme flip sweeps the new art in top to bottom
-function makeArt(canvas, src, { hover = true } = {}) {
+function makeArt(canvas, src, { hover = true, signal } = {}) {
   const B = 8, R = 52, FADE = 0.01;
   const NOISE = 150, FLICKER = 60;   // ms a block shows noise before it settles; ms between noise shuffles
   const root = document.documentElement, ctx = canvas.getContext('2d');
@@ -164,6 +165,7 @@ function makeArt(canvas, src, { hover = true } = {}) {
   // repaint while the cursor is over the art, any block is still coloured, or a reveal is running; then stop
   const frame = () => {
     raf = 0;
+    if (signal?.aborted) return;
     if (fade) for (let i = 0; i < fade.length; i++) fade[i] = Math.max(0, fade[i] - FADE);
     paint();
     if ((pos || lit || reveal) && fade && canvas.clientWidth && !raf) raf = requestAnimationFrame(frame);
@@ -190,9 +192,9 @@ function makeArt(canvas, src, { hover = true } = {}) {
     canvas.addEventListener('pointercancel', lift);
     canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') clear(); });
   }
-  addEventListener('resize', paint);
+  addEventListener('resize', paint, { signal });
   // under the page's crossfade the new art just appears in the new snapshot; otherwise it sweeps in
-  addEventListener('themechange', e => { if (!e.detail?.faded) start('sweep', 350); paint(); });
+  addEventListener('themechange', e => { if (!e.detail?.faded) start('sweep', 350); paint(); }, { signal });
   paint();
 
   return {
