@@ -494,22 +494,29 @@ onPage(() => document.querySelectorAll('a[href="#top"]').forEach(a => a.addEvent
     if (rise && !raf) raf = requestAnimationFrame(frame);
   };
 
-  // the text and boxes to keep clear: every visible text line on the page, plus KEEP
+  // the text and boxes to keep clear: every visible text line on the page, plus KEEP. they're measured in page
+  // coordinates, so a scroll only shifts them, and measured again only when the page changes (see remeasure). the
+  // scroll dock is fixed to the window, so its glyphs are kept in window coordinates (fixed)
+  let measured = null;
   const rects = () => {
-    const out = [], walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+    if (measured) return measured;
+    const out = [], y = scrollY, walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
       acceptNode: t => t.data.trim() && !t.parentElement.closest('script, style, header, [hidden]') ? 1 : 2,
     });
+    const add = (r, fixed, m = 0) =>
+      out.push({ left: r.left - m, right: r.right + m, top: r.top - m + (fixed ? 0 : y), bottom: r.bottom + m + (fixed ? 0 : y), width: r.width + 2 * m, fixed });
     const range = document.createRange();
-    for (let t; (t = walk.nextNode());) { range.selectNodeContents(t); out.push(...range.getClientRects()); }
+    for (let t; (t = walk.nextNode());) {
+      range.selectNodeContents(t);
+      const fixed = !!t.parentElement.closest('.namefill-dock');
+      for (const r of range.getClientRects()) add(r, fixed);
+    }
     for (const el of document.querySelectorAll(KEEP)) {
       if (el.closest('header')) continue;
-      const r = el.getBoundingClientRect();
       // the svg buttons get a little dot-free space past their edges, so the icons don't sit against the dots
-      if (!el.matches('.proj-link')) { out.push(r); continue; }
-      const m = BTN_MARGIN;
-      out.push({ left: r.left - m, right: r.right + m, top: r.top - m, bottom: r.bottom + m, width: r.width + 2 * m });
+      add(el.getBoundingClientRect(), false, el.matches('.proj-link') ? BTN_MARGIN : 0);
     }
-    return out;
+    return measured = out;
   };
 
   // the halo map: 1 where dots should be gone, fading to 0 FALL px past each padded box
@@ -517,8 +524,9 @@ onPage(() => document.querySelectorAll('a[href="#top"]').forEach(a => a.addEvent
     const { gw, gh, H, jit } = dots, top = innerHeight - H, reach = PAD + FALL;
     target.fill(0);
     for (const r of rects()) {
-      if (!r.width || r.bottom < top - reach || r.top > innerHeight + reach) continue;
-      const l = r.left, rt = r.right, t = r.top - top, b = r.bottom - top;
+      const y = r.fixed ? 0 : scrollY;
+      if (!r.width || r.bottom - y < top - reach || r.top - y > innerHeight + reach) continue;
+      const l = r.left, rt = r.right, t = r.top - y - top, b = r.bottom - y - top;
       const i0 = Math.max(0, Math.floor((l - reach) / S)), i1 = Math.min(gw - 1, Math.ceil((rt + reach) / S));
       const j0 = Math.max(0, Math.floor((t - reach) / S)), j1 = Math.min(gh - 1, Math.ceil((b + reach) / S));
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
@@ -598,6 +606,7 @@ onPage(() => document.querySelectorAll('a[href="#top"]').forEach(a => a.addEvent
     if (moving || dirty) raf = requestAnimationFrame(frame); else last = 0;
   };
   const kick = () => { dirty = true; if (!raf) raf = requestAnimationFrame(frame); };
+  const remeasure = () => { measured = null; kick(); };
 
   addEventListener('scroll', kick, { passive: true });
   // the canvas sits behind everything and ignores the pointer, so follow the mouse on the window. touch has no hover
@@ -607,13 +616,15 @@ onPage(() => document.querySelectorAll('a[href="#top"]').forEach(a => a.addEvent
     if (!raf) raf = requestAnimationFrame(frame);
   }, { passive: true });
   document.documentElement.addEventListener('mouseleave', () => { pointer = null; });
-  // text that appears or moves later (the github graph, fonts loading) moves the halos too. the header is skipped: it
-  // never sits over the mountains, and the player's clock in it ticks several times a second
-  const inHeader = n => (n.nodeType === 1 ? n : n.parentElement)?.closest('header');
-  new MutationObserver(list => { if (list.some(m => !inHeader(m.target))) kick(); })
-    .observe(document.body, { subtree: true, childList: true, characterData: true });
-  document.fonts?.ready.then(kick);
-  addEventListener('resize', build);
+  // text that appears, hides or moves later (the github graph and its tooltip, fonts loading, a page swap, anything that
+  // changes the page's size) is measured again. the header is skipped: it never sits over the mountains, and the
+  // player's clock in it ticks several times a second. so is the scroll dock, which redraws on every scroll
+  const skip = n => (n.nodeType === 1 ? n : n.parentElement)?.closest('header, .namefill-dock');
+  new MutationObserver(list => { if (list.some(m => !skip(m.target))) remeasure(); })
+    .observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden'] });
+  new ResizeObserver(remeasure).observe(document.body);
+  document.fonts?.ready.then(remeasure);
+  addEventListener('resize', () => { measured = null; build(); });
   addEventListener('themechange', build);
   build();
 })();

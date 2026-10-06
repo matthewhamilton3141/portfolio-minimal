@@ -2,7 +2,7 @@
 // export packed as { cols, colors, rows: [[x, colour index, text], ...] } (tools/embed_art.py, tools/pack_covers.py).
 // each theme's art is rendered once into an offscreen canvas (per width), so a theme flip is a single image copy,
 // not ~20k text draws.
-// muted by default (half the saturation). the cursor brings each 8px block it moves onto up to full colour until
+// black and white by default. the cursor brings each 8px block it moves onto up to full colour until
 // every block is full, then mutes them again until every block is muted. full colour fades back to muted block by block
 // once you leave. with { hover: false } the art is shown in full colour and the cursor does nothing (the player's cover).
 // { signal } stops it when that signal aborts (the hero, when the page is swapped out).
@@ -22,12 +22,14 @@ function makeArt(canvas, src, { hover = true, signal } = {}) {
   const tmp = document.createElement('canvas'), tctx = tmp.getContext('2d');
 
   // the exports' colours are true to the source but muted next to the page, so push each one's saturation up (greys stay
-  // grey). SAT is full colour, MUTED the resting state under hover. worked out once per palette and amount
-  const SAT = 1.6, MUTED = .5;
+  // grey). SAT is full colour, MUTED the resting state under hover. worked out once per palette and amount.
+  // at 0 it's black and white: each colour's grey is its luminance, so blues stay dark and yellows stay light
+  const SAT = 1.6, MUTED = 0;
   const vivid = (hex, sat) => {
     const n = parseInt(hex.slice(1), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
     const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
     if (!d) return hex;
+    if (!sat) { const y = Math.round((.2126 * r + .7152 * g + .0722 * b) * 255); return `rgb(${y},${y},${y})`; }
     let h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
     const s = Math.min(1, d / (1 - Math.abs(2 * l - 1)) * sat);
     return `hsl(${h * 60} ${s * 100}% ${l * 100}%)`;

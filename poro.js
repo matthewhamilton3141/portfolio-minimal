@@ -1,8 +1,14 @@
 // the poro from portfolio-review, in a strip above the footer. it follows the pointer's horizontal position
 // across the page, and clicking it plays a reaction.
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/DRACOLoader.js';
+// three.js and the model are only fetched once the strip comes near the screen, and it only draws while it's on screen
+const CDN = 'https://cdn.jsdelivr.net/npm/three@0.160.0/';
+let libs = null;
+const loadLibs = () => libs ||= Promise.all([
+  import(CDN + 'build/three.module.js'),
+  import(CDN + 'examples/jsm/loaders/GLTFLoader.js'),
+  import(CDN + 'examples/jsm/loaders/DRACOLoader.js'),
+]).then(([THREE, { GLTFLoader }, { DRACOLoader }]) => ({ THREE, GLTFLoader, DRACOLoader }))
+  .catch(err => { libs = null; throw err; });
 
 // values from portfolio-review/components/poro.tsx, with the speed raised so it reads as following the cursor
 // SPEED caps how fast it can travel (world units per second). FOLLOW is how quickly it eases toward the pointer:
@@ -22,6 +28,16 @@ onPage(signal => {
   const stage = document.getElementById('poro');
   if (!stage) return;
   if (!webgl) { stage.remove(); return; }
+  const near = new IntersectionObserver(([e]) => {
+    if (!e.isIntersecting) return;
+    near.disconnect();
+    loadLibs().then(lib => { if (!signal.aborted) start(stage, signal, lib); }, err => console.error(err));
+  }, { rootMargin: '300px' });
+  near.observe(stage);
+  signal.addEventListener('abort', () => near.disconnect());
+});
+
+const start = (stage, signal, { THREE, GLTFLoader, DRACOLoader }) => {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   stage.appendChild(renderer.domElement);
   const scene = new THREE.Scene();
@@ -62,7 +78,7 @@ onPage(signal => {
     current = name;
   };
 
-  const draco = new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/');
+  const draco = new DRACOLoader().setDecoderPath(CDN + 'examples/jsm/libs/draco/');
   new GLTFLoader().setDRACOLoader(draco).load('models/poro.glb', gltf => {
     group.add(gltf.scene);
     mixer = new THREE.AnimationMixer(gltf.scene);
@@ -120,7 +136,7 @@ onPage(signal => {
   });
 
   const clock = new THREE.Clock();
-  renderer.setAnimationLoop(() => {
+  const frame = () => {
     const delta = Math.min(clock.getDelta(), 0.05);
     if (mixer) mixer.update(delta);
     const halfWidth = camera.right;
@@ -149,13 +165,20 @@ onPage(signal => {
     group.position.x = posX - restCenterX;
     group.rotation.y = facing;
     renderer.render(scene, camera);
+  };
+  // scrolled out of view, it stops drawing. the time away doesn't count as one long frame when it's back
+  const seen = new IntersectionObserver(([e]) => {
+    if (e.isIntersecting) clock.getDelta();
+    renderer.setAnimationLoop(e.isIntersecting ? frame : null);
   });
+  seen.observe(stage);
 
   // swapped out: stop drawing and let go of the gpu
   signal.addEventListener('abort', () => {
     renderer.setAnimationLoop(null);
     renderer.dispose();
     ro.disconnect();
+    seen.disconnect();
     clearTimeout(overrideTimer);
   });
-});
+};

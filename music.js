@@ -17,7 +17,8 @@
   const section = document.getElementById('music');
   if (section && TRACKS.length) {
     const audio = new Audio();
-    audio.preload = 'metadata';   // so the length shows before the first play
+    // nothing is fetched until the player is first opened (or something plays), then just enough to show the length
+    audio.preload = 'none';
     const titleEl = document.getElementById('track-title');
     const artistEl = document.getElementById('track-artist');
     const playBtn = document.getElementById('play');
@@ -35,7 +36,12 @@
     const setOpen = open => {
       section.hidden = !open;
       toggle.setAttribute('aria-expanded', open);
-      if (open) { showCover(); cover.paint(); }   // the cover can't draw while hidden, so catch up (a theme change, say)
+      if (!open) return;
+      showCover(); cover.paint();   // the cover can't draw while hidden, so catch up (a theme change, say)
+      if (audio.preload === 'none') {
+        audio.preload = 'metadata';
+        if (audio.paused && !audio.readyState) audio.load();
+      }
     };
     toggle.addEventListener('click', () => setOpen(!isOpen()));
     addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen()) { setOpen(false); toggle.focus(); } });
