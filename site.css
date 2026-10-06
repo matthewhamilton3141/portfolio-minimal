@@ -4,15 +4,28 @@
   --ink: #111;
   --dim: #777;
   --line: #e5e5e5;
+  /* a few bright colours for highlights. they're used as text, so the light ones are deep enough to read on white,
+     and dark mode gets lighter versions so they stay bright on black */
+  --blue: #2463ff; --pink: #e6006f; --green: #00995a; --gold: #c27400;
+  --accent: var(--pink);
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --bg: #0d0d0d; --ink: #eee; --dim: #888; --line: #222; }
+  :root:not([data-theme="light"]) {
+    --bg: #0d0d0d; --ink: #eee; --dim: #888; --line: #222;
+    --blue: #6b9bff; --pink: #ff5ca8; --green: #2ee59d; --gold: #ffc233;
+  }
 }
-:root[data-theme="dark"] { --bg: #0d0d0d; --ink: #eee; --dim: #888; --line: #222; }
+:root[data-theme="dark"] {
+  --bg: #0d0d0d; --ink: #eee; --dim: #888; --line: #222;
+  --blue: #6b9bff; --pink: #ff5ca8; --green: #2ee59d; --gold: #ffc233;
+}
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+/* the theme switch crossfades the old page into the new one (see site.js) */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .4s; animation-timing-function: ease-in-out; }
 html { -webkit-text-size-adjust: 100%; scrollbar-width: none; }
 html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+/* dotted mountains sit along the bottom of the screen, behind everything (site.js) */
 body {
   background: var(--bg);
   color: var(--ink);
@@ -21,18 +34,35 @@ body {
 }
 main { width: min(560px, 100%); margin: 0 auto; }
 a { color: inherit; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
-a:hover { text-decoration-color: var(--ink); }
+a:hover { text-decoration-color: var(--accent); }
 
-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 40px; position: sticky; top: 0; z-index: 50; background: var(--bg); padding: 16px 0; margin-top: -16px; }
+/* translucent and blurred, so scrolled text doesn't show through sharply */
+header {
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 20px;
+  position: sticky; top: 0; z-index: 50; padding: 16px 0; margin-top: -16px;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
 nav { display: flex; align-items: center; gap: 16px; }
 nav a { color: var(--dim); text-decoration: none; }
 nav a:hover { color: var(--ink); }
 
 h1 { font-size: 15px; font-weight: 500; }
 
-/* highlighted words: inverted block, with an optional logo after the word */
-.hl { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); padding: 0 .3em; }
-.hl .ico { display: inline-block; width: 1em; height: 1em; vertical-align: -.14em; margin-right: .25em; object-fit: contain; }
+/* highlighted words: a block tinted with the highlight's colour (the accent unless a colour class picks another),
+   wrapped in brackets of that colour like the [play] [skip] controls, with an optional logo at the end */
+.hl { --c: var(--accent); background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--ink); padding: 0 .2em; }
+.hl::before { content: '['; color: var(--c); }
+.hl::after { content: ']'; color: var(--c); }
+.hl.plain { --c: var(--ink); } .hl.blue { --c: var(--blue); } .hl.pink { --c: var(--pink); } .hl.green { --c: var(--green); } .hl.gold { --c: var(--gold); }
+.hl .ico { display: inline-block; width: 1em; height: 1em; vertical-align: -.14em; margin-left: .3em; object-fit: contain; }
+/* microsoft: the tint runs through the logo's red, green, blue and yellow, and the brackets take the first and last */
+.hl.ms {
+  background: linear-gradient(90deg, color-mix(in srgb, #f25022 18%, transparent), color-mix(in srgb, #7fba00 18%, transparent),
+    color-mix(in srgb, #00a4ef 18%, transparent), color-mix(in srgb, #ffb900 18%, transparent));
+}
+.hl.ms::before { color: #f25022; }
+.hl.ms::after { color: #ffb900; }
 .dim { color: var(--dim); }
 
 button {
@@ -41,20 +71,21 @@ button {
 }
 button:hover { color: var(--ink); }
 /* theme toggle: the word for the mode it switches to, in brackets */
-#theme {
+#theme, #music-toggle {
   height: 28px; padding: 0 2px; font: 14px/1 'PingFang SC', 'Noto Sans SC', sans-serif;
   color: var(--ink); border-radius: 0;
 }
-#theme:hover, #theme:focus-visible { background: var(--ink); color: var(--bg); }
+#theme:hover, #theme:focus-visible, #music-toggle:hover, #music-toggle:focus-visible, #music-toggle[aria-expanded="true"] { background: var(--accent); color: #fff; }
 
-section { margin-top: 32px; }
+section { margin-top: 18px; }
 /* the rule separates the timelines (done, now, github), not the items inside them */
-section + section, #done { border-top: 1px solid var(--line); padding-top: 16px; }
-h2 { font-size: 15px; font-weight: 400; color: var(--dim); margin-bottom: 16px; }
+section + section, #done { border-top: 1px solid var(--line); padding-top: 10px; }
+#github { border-top: 0; }
+h2 { font-size: 15px; font-weight: 400; color: var(--dim); margin-bottom: 6px; }
 
 .row {
   display: grid; grid-template-columns: 1fr auto; gap: 4px 16px;
-  padding: 12px 0;
+  padding: 5px 0;
 }
 .row p { grid-column: 1 / -1; color: var(--dim); }
 /* a highlight that is the row's only child would stretch to the full 1fr column; keep it hugging the text */
@@ -113,11 +144,18 @@ h2 { font-size: 15px; font-weight: 400; color: var(--dim); margin-bottom: 16px; 
 .gh-tip[hidden] { display: none; }
 .gh-total { margin: 0 0 16px; color: var(--dim); }
 
-/* music: the track info, a playback bar and text controls, in the page's bracket style */
-.player[hidden] { display: none; }
-.player { margin-top: 4px; }
-/* the info column is exactly as wide as the dock, and long titles wrap inside it, so the bar never grows with the text */
-.info { width: 100%; min-width: 0; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+/* music: a menu that drops down from the header when [♪] is pressed. the album cover sits on the left, and the
+   track info, playback bar and text controls (in the page's bracket style) on the right */
+#music {
+  position: absolute; top: 100%; right: 0; z-index: 60; width: min(360px, calc(100vw - 32px));
+  padding: 12px; background: var(--bg); border: 1px solid var(--line);
+}
+#music[hidden] { display: none; }
+.player { display: flex; gap: 14px; align-items: flex-start; }
+/* the track's album cover as ascii art (ascii.js); square until its art loads and sets the real height */
+.cover { display: block; flex: none; width: 112px; aspect-ratio: 1; touch-action: pan-y; }
+/* the info column takes the rest of the menu's width, and long titles wrap inside it, so the bar never grows with the text */
+.info { flex: 1; min-width: 0; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
 .info p { margin: 0; }
 .ctl {
   display: inline; width: auto; height: auto; padding: 0; margin-right: 8px;
@@ -132,21 +170,6 @@ h2 { font-size: 15px; font-weight: 400; color: var(--dim); margin-bottom: 16px; 
 .time { display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
 .bar:focus-visible { outline: 1px solid var(--ink); outline-offset: 3px; }
 
-/* on wide screens the player docks to the left edge, like the name on the right; phones keep it in the flow */
-@media (min-width: 768px) {
-  #music {
-    position: fixed; left: 40px; top: 50%; transform: translateY(-50%);
-    /* up to 340px, but never closer than 24px to the 560px content column (280px is the floor on narrow screens) */
-    width: clamp(280px, calc(50vw - 280px - 64px), 340px); margin-top: 0; z-index: 90;
-    border-top: 0; padding-top: 0;
-  }
-}
-
-/* the player only shows on wide screens (a full-size window or fullscreen), and is hidden in a smaller window */
-@media (max-width: 1199px) {
-  #music { display: none; }
-}
-
 /* footer sits on the bottom edge of the page, below the content */
 body:has(> footer) { min-height: 100vh; display: flex; flex-direction: column; padding-bottom: 24px; }
 footer {
@@ -156,9 +179,22 @@ footer {
 }
 footer a { color: var(--dim); }
 footer a:hover { color: var(--ink); }
+/* the verse takes its own line under the footer row */
+.verse { flex-basis: 100%; font-style: italic; }
+.verse span { font-style: normal; margin-left: .4em; }
 
 /* keyboard focus: a plain outline, shown only for keyboard users */
 :focus-visible { outline: 1px solid var(--ink); outline-offset: 3px; }
 
+/* touch screens: the nav and footer links get a taller tap area without moving the layout (negative margin cancels the padding) */
+@media (pointer: coarse) {
+  nav a, footer a, .proj-link, .ctl, #theme, #music-toggle { display: inline-block; padding: 10px 0; margin: -10px 0; }
+  footer a { padding: 10px 0; }
+}
+
 /* the poro strip sits inside the content column, between the last section and the footer */
 .poro { position: relative; top: 8px; z-index: 2; width: 100%; height: 65px; margin: 58px 0 0; cursor: default; user-select: none; overflow: hidden; }
+
+/* dotted mountains, drawn by site.js (which sets the height): fixed to the bottom of the screen, behind everything,
+   and never in the way */
+.mountains { position: fixed; left: 0; bottom: 0; width: 100%; height: 0; z-index: -1; pointer-events: none; }

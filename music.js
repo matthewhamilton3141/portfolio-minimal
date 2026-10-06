@@ -2,15 +2,15 @@
 // audio are the same ones on portfolio-html's notch player, served from its R2 bucket
 const R2 = 'https://pub-ce086066003e4e1cad2011087e85618b.r2.dev/';
 const TRACKS = [
-  { title: 'nights', artist: 'frank ocean', src: R2 + 'nights.mp3' },
-  { title: 'who knows', artist: 'daniel caesar', src: R2 + 'whoknows.mp3' },
-  { title: 'whiplash', artist: 'aespa', src: R2 + 'whiplash.mp3' },
-  { title: 'clarity', artist: 'zedd (ft. foxes)', src: R2 + 'clarity.mp3' },
-  { title: 'japanese denim', artist: 'daniel caesar', src: R2 + 'japanesedenim.mp3' },
-  { title: 'crank the bass, play the muzik', artist: 'knock2', src: R2 + 'crankthebassplaythemuzik.mp3' },
-  { title: 'slow dancing in the dark', artist: 'joji', src: R2 + 'slowdancinginthedark.mp3' },
-  { title: 'ochos rios', artist: 'daniel caesar', src: R2 + 'ochosrios.mp3' },
-  { title: 'cyanide', artist: 'daniel caesar', src: R2 + 'cyanide.mp3' },
+  { title: 'nights', artist: 'frank ocean', src: R2 + 'nights.mp3', cover: 'blond' },
+  { title: 'who knows', artist: 'daniel caesar', src: R2 + 'whoknows.mp3', cover: 'neverenough' },
+  { title: 'whiplash', artist: 'aespa', src: R2 + 'whiplash.mp3', cover: 'whiplash' },
+  { title: 'clarity', artist: 'zedd (ft. foxes)', src: R2 + 'clarity.mp3', cover: 'clarity' },
+  { title: 'japanese denim', artist: 'daniel caesar', src: R2 + 'japanesedenim.mp3', cover: 'japanesedenim' },
+  { title: 'crank the bass, play the muzik', artist: 'knock2', src: R2 + 'crankthebassplaythemuzik.mp3', cover: 'nolimit' },
+  { title: 'slow dancing in the dark', artist: 'joji', src: R2 + 'slowdancinginthedark.mp3', cover: 'ballads1' },
+  { title: 'ochos rios', artist: 'daniel caesar', src: R2 + 'ochosrios.mp3', cover: 'sonofspergy' },
+  { title: 'cyanide', artist: 'daniel caesar', src: R2 + 'cyanide.mp3', cover: 'casestudy' },
 ];
 
 const section = document.getElementById('music');
@@ -27,6 +27,41 @@ if (section && TRACKS.length) {
 
   const updateButton = () => { playBtn.textContent = audio.paused ? '[play]' : '[pause]'; };
   const showProgress = ratio => { fill.style.width = (ratio * 100) + '%'; bar.setAttribute('aria-valuenow', Math.round(ratio * 100)); };
+  // the player is a menu under the header, opened by [♪]. it closes on the button again, escape, or a click outside;
+  // the music keeps playing while it's closed
+  const toggle = document.getElementById('music-toggle');
+  const isOpen = () => !section.hidden;
+  const setOpen = open => {
+    section.hidden = !open;
+    toggle.setAttribute('aria-expanded', open);
+    if (open) { showCover(); cover.paint(); }   // the cover can't draw while hidden, so catch up (a theme change, say)
+  };
+  toggle.addEventListener('click', () => setOpen(!isOpen()));
+  addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen()) { setOpen(false); toggle.focus(); } });
+  addEventListener('pointerdown', e => { if (isOpen() && !section.contains(e.target) && !toggle.contains(e.target)) setOpen(false); });
+
+  // the album cover as ascii art (ascii.js), in colour. covers/<name>.json is fetched when its track loads,
+  // with the next one prefetched, and only while the menu is open
+  const cover = makeArt(section.querySelector('.cover'), null, { hover: false });
+  const covers = new Map();   // name → promise of { light, dark }, or null if it failed
+  const fetchCover = name => {
+    if (!covers.has(name)) covers.set(name, fetch(`covers/${name}.json`)
+      .then(r => { if (!r.ok) throw new Error('bad response'); return r.json(); })
+      .catch(() => { covers.delete(name); return null; }));
+    return covers.get(name);
+  };
+  let shown = null;
+  const showCover = () => {
+    if (!isOpen()) return;
+    const name = TRACKS[index].cover;
+    fetchCover(name).then(art => {
+      if (!art || name !== TRACKS[index].cover || name === shown) return;   // failed, or skipped past while loading
+      shown = name;
+      cover.setArt(art);
+      fetchCover(TRACKS[(index + 1) % TRACKS.length].cover);
+    });
+  };
+
   const load = i => {
     index = (i + TRACKS.length) % TRACKS.length;
     const t = TRACKS[index];
@@ -36,6 +71,7 @@ if (section && TRACKS.length) {
     showProgress(0);
     curEl.textContent = durEl.textContent = '0:00';
     updateButton();
+    showCover();
   };
   const skip = step => {
     const wasPlaying = !audio.paused;
@@ -79,5 +115,4 @@ if (section && TRACKS.length) {
   audio.addEventListener('ended', () => skip(1));
 
   load(0);
-  section.querySelector('.player').hidden = false;
 }
