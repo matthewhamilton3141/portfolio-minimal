@@ -17,6 +17,7 @@
   const section = document.getElementById('music');
   if (section && TRACKS.length) {
     const audio = new Audio();
+    audio.volume = .2;   // background music, so it sits well under whatever else is playing
     // nothing is fetched until the player is first opened (or something plays), then just enough to show the length
     audio.preload = 'none';
     const titleEl = document.getElementById('track-title');
