@@ -423,7 +423,7 @@ onPage(() => document.querySelectorAll('a[href="#top"]').forEach(a => a.addEvent
       done({ img, peak: Math.floor((k >> 2) / c.width) / c.height });
     };
     img.onerror = () => done(null);
-    img.src = `images/mountains-${theme}.webp?v=8`;   // bump after re-running tools/mountains_mask.py
+    img.src = `images/mountains-${theme}.webp?v=10`;   // bump after re-running tools/mountains_mask.py
   });
   const sample = document.createElement('canvas'), sctx = sample.getContext('2d', { willReadFrequently: true });
 
