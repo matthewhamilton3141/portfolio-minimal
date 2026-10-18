@@ -35,7 +35,7 @@ const onPage = init => { pageInits.push(init); init(pageCtl.signal); };
 // 陳文飛 scroll dock: each glyph fills over a third of the page.
 // click a glyph to jump to its section, drag the column to scrub.
 (() => {
-  const desktop = matchMedia('(hover: hover) and (pointer: fine) and (min-width: 768px)');
+  const desktop = matchMedia('(any-hover: hover) and (any-pointer: fine) and (min-width: 768px)');
   // each page names its three jump targets: <body data-jumps="top,done,now">
   // (read at each jump: the dock stays across page swaps)
   const CHARS = ['陳', '文', '飛'], jumps = () => (document.body.dataset.jumps || '').split(',');
