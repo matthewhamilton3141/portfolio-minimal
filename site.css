@@ -60,7 +60,8 @@ h1 { font-size: 15px; font-weight: 500; }
 
 /* highlighted words: a block tinted with the highlight's colour (the accent unless a colour class picks another),
    wrapped in brackets of that colour like the [play] [skip] controls, with an optional logo at the end */
-.hl { --c: var(--accent); background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--ink); padding: 0 .2em; }
+.hl { --c: var(--accent); background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--ink); padding: 0 .2em; transition: background .15s; }
+.hl:hover { background: color-mix(in srgb, var(--c) 28%, transparent); }
 .hl::before { content: '['; color: var(--c); }
 .hl::after { content: ']'; color: var(--c); }
 .hl.plain { --c: var(--ink); } .hl.blue { --c: var(--blue); } .hl.pink { --c: var(--pink); } .hl.green { --c: var(--green); } .hl.gold { --c: var(--gold); }
@@ -69,6 +70,10 @@ h1 { font-size: 15px; font-weight: 500; }
 .hl.ms {
   background: linear-gradient(90deg, color-mix(in srgb, #f25022 18%, transparent), color-mix(in srgb, #7fba00 18%, transparent),
     color-mix(in srgb, #00a4ef 18%, transparent), color-mix(in srgb, #ffb900 18%, transparent));
+}
+.hl.ms:hover {
+  background: linear-gradient(90deg, color-mix(in srgb, #f25022 32%, transparent), color-mix(in srgb, #7fba00 32%, transparent),
+    color-mix(in srgb, #00a4ef 32%, transparent), color-mix(in srgb, #ffb900 32%, transparent));
 }
 .hl.ms::before { color: #f25022; }
 .hl.ms::after { color: #ffb900; }
