@@ -637,8 +637,10 @@ onPage(() => document.querySelectorAll('a[href="#top"]').forEach(a => a.addEvent
 (() => {
   const page = url => {
     const u = new URL(url, location.href);
-    if (u.origin !== location.origin || !/\/(index\.html|projects\.html)?$/.test(u.pathname)) return null;
-    return u.pathname.replace(/\/$/, '/index.html');
+    if (u.origin !== location.origin) return null;
+    const m = u.pathname.match(/^\/(?:(index|projects)(?:\.html)?)?\/?$/);
+    if (!m) return null;
+    return m[1] === 'projects' ? '/projects' : '/';
   };
   let here = page(location.href);
   const fetched = new Map();   // page → promise of its html
